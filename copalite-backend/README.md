@@ -1,4 +1,4 @@
-# Copalite Backend — v1
+# Copalite Backend — v1.1
 
 ## O que é
 Backend NestJS da plataforma Copalite — sistema de discovery, mapeamento técnico e validação de software existente com agentes de IA.
@@ -9,9 +9,11 @@ Backend NestJS da plataforma Copalite — sistema de discovery, mapeamento técn
 - **Linguagem:** TypeScript 5
 - **Banco:** PostgreSQL 15+
 - **ORM:** TypeORM
-- **Auth:** JWT (Passport)
+- **Auth:** JWT (Passport) + Refresh Token
 - **Validação:** class-validator + class-transformer
 - **Docs:** Swagger (OpenAPI)
+- **Segurança:** Helmet, ThrottlerModule
+- **Observabilidade:** RequestLoggingInterceptor, AllExceptionsFilter, Logger
 
 ## Estrutura
 
@@ -24,6 +26,9 @@ src/
 │   ├── enums/                 # Enums compartilhados (espelho do PostgreSQL)
 │   ├── decorators/            # @CurrentUser, @Public
 │   ├── guards/                # JwtAuthGuard, WorkspaceMemberGuard
+│   ├── filters/               # AllExceptionsFilter (global)
+│   ├── interceptors/          # RequestLoggingInterceptor (global)
+│   ├── pipes/                 # PaginationQueryDto + helpers
 │   └── interfaces/            # JwtPayload
 ├── database/
 │   ├── database.module.ts     # TypeORM async config

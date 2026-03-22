@@ -1,10 +1,11 @@
-# Copalite Frontend — v1
+# Copalite Frontend — v1.1
 
 ## Stack
 - **Framework:** Next.js 14 (App Router)
 - **Linguagem:** TypeScript 5
 - **Estilo:** Tailwind CSS 3.4 (dark theme customizado)
 - **Ícones:** Lucide React
+- **Charts:** Recharts
 - **Fontes:** DM Sans + JetBrains Mono
 
 ## Setup
@@ -44,10 +45,17 @@ O backend deve estar rodando em `http://localhost:3000`.
 ## API Client
 
 O arquivo `src/lib/api.ts` contém o client HTTP completo para todos os endpoints do backend, incluindo:
-- Auth (login, me)
+- Auth (login, me, refresh token com renovação proativa)
 - CRUD para todos os módulos
 - Orchestration (start, advance, cancel, retry, status)
 - Dashboard metrics
+- Paginação (`parseListResponse`) e error handling (`parseErrorPayload`)
+
+## Error Handling
+
+- `src/lib/errors.ts` — Classe `AppError` + helper `toUserMessage()`
+- `error.tsx` em rotas principais — Error boundaries do Next.js com feedback visual
+- API client faz proactive token refresh antes da expiração
 
 ## Design System
 
