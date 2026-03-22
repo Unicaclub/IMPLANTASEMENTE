@@ -22,7 +22,7 @@ export interface Run { id: string; projectId: string; sourceId: string | null; r
 export interface RunStep { id: string; runId: string; stepOrder: number; stepName: string; stepType: string; status: string; startedAt: string | null; finishedAt: string | null; notes: string | null; }
 
 // Agent
-export interface Agent { id: string; name: string; slug: string; agentType: string; description: string | null; status: string; executionOrder: number | null; }
+export interface Agent { id: string; name: string; slug: string; agentType: string; description: string | null; status: string; executionOrder: number | null; config?: Record<string, unknown> | null; }
 
 // Backlog
 export interface BacklogItem { id: string; projectId: string; title: string; description: string; backlogType: string; priority: string; status: string; evidenceCount: number; approvedForTask: boolean; approvedAt: string | null; createdAt: string; }

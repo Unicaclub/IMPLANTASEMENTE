@@ -25,6 +25,13 @@ const AGENT_TYPE_COLORS: Record<string, { bg: string; text: string }> = {
   qa_test_agent:      { bg: 'bg-pink-500/10', text: 'text-pink-400' },
 };
 
+const PROVIDER_COLORS: Record<string, { bg: string; text: string; label: string }> = {
+  anthropic: { bg: 'bg-amber-500/10', text: 'text-amber-300', label: 'Anthropic' },
+  openai:    { bg: 'bg-green-500/10', text: 'text-green-300', label: 'OpenAI' },
+  google:    { bg: 'bg-blue-500/10', text: 'text-blue-300', label: 'Google' },
+  ollama:    { bg: 'bg-purple-500/10', text: 'text-purple-300', label: 'Ollama' },
+};
+
 const STATUS_ICONS: Record<string, React.ElementType> = {
   active: CheckCircle2,
   inactive: XCircle,
@@ -35,6 +42,8 @@ function AgentCard({ agent }: { agent: Agent }) {
   const typeColor = AGENT_TYPE_COLORS[agent.agentType] ?? { bg: 'bg-coal-700/40', text: 'text-coal-300' };
   const StatusIcon = STATUS_ICONS[agent.status] ?? Clock;
   const statusColor = agent.status === 'active' ? 'text-emerald-400' : agent.status === 'inactive' ? 'text-coal-500' : 'text-amber-400';
+  const providerKey = (agent.config?.provider as string) || null;
+  const providerInfo = providerKey ? PROVIDER_COLORS[providerKey] ?? null : null;
 
   return (
     <div className="card-hover p-5 space-y-3">
@@ -55,10 +64,15 @@ function AgentCard({ agent }: { agent: Agent }) {
         <p className="text-xs text-coal-400 line-clamp-2">{agent.description}</p>
       )}
 
-      <div className="flex items-center gap-3 pt-1">
+      <div className="flex items-center gap-3 pt-1 flex-wrap">
         <span className={`badge text-[10px] ${typeColor.bg} ${typeColor.text} border border-current/20`}>
           {agent.agentType.replace(/_/g, ' ')}
         </span>
+        {providerInfo && (
+          <span className={`badge text-[10px] ${providerInfo.bg} ${providerInfo.text} border border-current/20`}>
+            {providerInfo.label}
+          </span>
+        )}
         {agent.executionOrder != null && (
           <span className="text-[10px] text-coal-500 font-mono">
             order: {agent.executionOrder}
