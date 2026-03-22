@@ -58,3 +58,45 @@ export const RUN_STATUSES = ['pending', 'running', 'completed', 'failed', 'cance
 export const BACKLOG_TYPES = ['bug', 'gap', 'improvement', 'documentation', 'refactor', 'validation'] as const;
 export const PRIORITIES = ['low', 'medium', 'high', 'critical'] as const;
 export const TASK_STATUSES = ['pending', 'approved', 'in_progress', 'blocked', 'done', 'cancelled'] as const;
+
+// Agent Execution (integration prep)
+export const AGENT_TYPES = [
+  'orchestrator', 'architect', 'database_builder', 'backend_builder',
+  'frontend_builder', 'validator', 'doc_writer', 'devops_agent', 'qa_test_agent',
+] as const;
+export type AgentType = (typeof AGENT_TYPES)[number];
+
+export interface AgentRun {
+  id: string;
+  agentId: string;
+  runStepId: string;
+  status: string;
+  inputPayload: Record<string, unknown> | null;
+  outputPayload: Record<string, unknown> | null;
+  tokenUsage: number | null;
+  startedAt: string | null;
+  finishedAt: string | null;
+  errorMessage: string | null;
+}
+
+export interface AgentOutput {
+  id: string;
+  agentRunId: string;
+  outputType: string;
+  filePath: string | null;
+  content: string | null;
+  createdAt: string;
+}
+
+export interface AgentExecutionHook {
+  beforeRun?: (agent: Agent, context: AgentRunContext) => Promise<void>;
+  afterRun?: (agent: Agent, result: AgentRun) => Promise<void>;
+  onError?: (agent: Agent, error: Error) => Promise<void>;
+}
+
+export interface AgentRunContext {
+  runId: string;
+  stepId: string;
+  projectId: string;
+  parameters: Record<string, unknown>;
+}
