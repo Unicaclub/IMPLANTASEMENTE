@@ -5,7 +5,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { StatusBase, AgentType } from '../../../common/enums';
+import { AgentType, StatusBase } from '../../../common/enums';
 
 @Entity('agents')
 export class AgentEntity {
@@ -32,6 +32,9 @@ export class AgentEntity {
 
   @Column({ type: 'jsonb', nullable: true, default: null })
   config: Record<string, unknown> | null;
+
+  @Column({ name: 'system_prompt', type: 'text', nullable: true })
+  systemPrompt: string | null;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;

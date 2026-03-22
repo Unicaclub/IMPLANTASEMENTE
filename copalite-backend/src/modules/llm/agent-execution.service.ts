@@ -2,13 +2,13 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
-import { AgentEntity } from '../agents/entities/agent.entity';
-import { AgentRunEntity } from '../agent-runs/entities/agent-run.entity';
 import { AgentOutputEntity } from '../agent-outputs/entities/agent-output.entity';
+import { AgentRunEntity } from '../agent-runs/entities/agent-run.entity';
+import { AgentEntity } from '../agents/entities/agent.entity';
 import { LogEntity } from '../logs/entities/log.entity';
 import { PromptEntity } from '../prompts/entities/prompt.entity';
-import { RunEntity } from '../runs/entities/run.entity';
 import { RunStepEntity } from '../runs/entities/run-step.entity';
+import { RunEntity } from '../runs/entities/run.entity';
 
 import {
   ConfidenceStatus,
@@ -19,8 +19,11 @@ import {
   ValidationStatus,
 } from '../../common/enums';
 
-import { LlmProviderFactory } from './llm-provider.factory';
 import { LlmMessage } from './interfaces';
+import { LlmProviderFactory } from './llm-provider.factory';
+import { OutputParserService } from './output-parser.service';
+import { RegistryPopulationService, PopulationContext } from './registry-population.service';
+import { SourceIngestionService } from './source-ingestion.service';
 
 @Injectable()
 export class AgentExecutionService {
@@ -42,6 +45,9 @@ export class AgentExecutionService {
     @InjectRepository(RunStepEntity)
     private readonly stepRepo: Repository<RunStepEntity>,
     private readonly llmFactory: LlmProviderFactory,
+    private readonly outputParser: OutputParserService,
+    private readonly registryPopulation: RegistryPopulationService,
+    private readonly sourceIngestion: SourceIngestionService,
   ) {}
 
   /**
@@ -55,7 +61,8 @@ export class AgentExecutionService {
     });
     if (!agentRun) throw new Error(`AgentRun ${agentRunId} not found`);
 
-    const agent = agentRun.agent || await this.agentRepo.findOne({ where: { id: agentRun.agentId } });
+    const agent =
+      agentRun.agent || (await this.agentRepo.findOne({ where: { id: agentRun.agentId } }));
     if (!agent) throw new Error(`Agent ${agentRun.agentId} not found`);
 
     const run = await this.runRepo.findOne({ where: { id: agentRun.runId } });
@@ -67,18 +74,26 @@ export class AgentExecutionService {
       order: { stepOrder: 'ASC' },
     });
 
-    await this.log(run.projectId, run.id, agentRun.id, LogLevel.INFO,
+    await this.log(
+      run.projectId,
+      run.id,
+      agentRun.id,
+      LogLevel.INFO,
       `Agent execution started: ${agent.name} (${agent.agentType})`,
     );
 
     try {
-      // 1. Build messages
-      const messages = await this.buildMessages(agent, run, currentStep, agentRun);
+      // 1. Build messages (with source context)
+      const sourceContext = await this.sourceIngestion.getContext(run.projectId);
+      const messages = await this.buildMessages(agent, run, currentStep, agentRun, sourceContext);
 
       // 2. Call LLM
       const llmResponse = await this.llmFactory.chat(messages, agent.config);
 
-      // 3. Save output
+      // 3. Parse structured JSON from LLM response
+      const parseResult = this.outputParser.parse(llmResponse.content);
+
+      // 4. Save output
       const output = this.agentOutputRepo.create({
         agentRunId: agentRun.id,
         outputType: OutputType.SUMMARY,
@@ -90,24 +105,49 @@ export class AgentExecutionService {
           tokenUsage: llmResponse.tokenUsage,
           finishReason: llmResponse.finishReason,
           durationMs: llmResponse.durationMs,
+          parsed: parseResult.success,
+          parsedData: parseResult.data,
+          parseError: parseResult.error ?? null,
         },
         validationStatus: ValidationStatus.PENDING,
       });
       await this.agentOutputRepo.save(output);
 
-      // 4. Mark agent run as completed
+      // 5. Populate registry tables from parsed data
+      if (parseResult.success && parseResult.data) {
+        try {
+          const popCtx: PopulationContext = {
+            projectId: run.projectId,
+            runId: run.id,
+            agentRunId: agentRun.id,
+            agentType: agent.agentType,
+          };
+          const populated = await this.registryPopulation.populate(popCtx, parseResult.data as Record<string, unknown>);
+          this.logger.log(`Registry populated: ${populated} entries for ${agent.agentType}`);
+        } catch (popErr: unknown) {
+          const popMsg = popErr instanceof Error ? popErr.message : String(popErr);
+          this.logger.warn(`Registry population error (non-fatal): ${popMsg}`);
+        }
+      }
+
+      // 6. Mark agent run as completed
       agentRun.status = RunStatus.COMPLETED;
       agentRun.outputSummary = llmResponse.content.substring(0, 2000);
       agentRun.finishedAt = new Date();
-      agentRun.confidenceLevel = ConfidenceStatus.INFERRED;
+      agentRun.confidenceLevel = parseResult.success
+        ? ConfidenceStatus.INFERRED
+        : ConfidenceStatus.UNVALIDATED;
       await this.agentRunRepo.save(agentRun);
 
-      await this.log(run.projectId, run.id, agentRun.id, LogLevel.INFO,
+      await this.log(
+        run.projectId,
+        run.id,
+        agentRun.id,
+        LogLevel.INFO,
         `Agent execution completed: ${agent.name} — ${llmResponse.tokenUsage.total} tokens, ${llmResponse.durationMs}ms`,
       );
 
       return agentRun;
-
     } catch (error: unknown) {
       const errMsg = error instanceof Error ? error.message : String(error);
       this.logger.error(`Agent execution failed: ${agent.name} — ${errMsg}`);
@@ -119,7 +159,11 @@ export class AgentExecutionService {
       agentRun.confidenceLevel = ConfidenceStatus.UNVALIDATED;
       await this.agentRunRepo.save(agentRun);
 
-      await this.log(run.projectId, run.id, agentRun.id, LogLevel.ERROR,
+      await this.log(
+        run.projectId,
+        run.id,
+        agentRun.id,
+        LogLevel.ERROR,
         `Agent execution failed: ${agent.name} — ${errMsg}`,
       );
 
@@ -135,16 +179,18 @@ export class AgentExecutionService {
     run: RunEntity,
     step: RunStepEntity | null,
     agentRun: AgentRunEntity,
+    sourceContext?: string,
   ): Promise<LlmMessage[]> {
     const messages: LlmMessage[] = [];
 
-    // System prompt from the agent's active prompt template
+    // System prompt: prefer agent.systemPrompt, then prompts table, then default
     const prompt = await this.promptRepo.findOne({
       where: { agentId: agent.id, status: StatusBase.ACTIVE },
       order: { version: 'DESC' },
     });
 
-    const systemPrompt = prompt?.contentMarkdown || this.getDefaultSystemPrompt(agent);
+    const systemPrompt =
+      agent.systemPrompt || prompt?.contentMarkdown || this.getDefaultSystemPrompt(agent);
     messages.push({ role: 'system', content: systemPrompt });
 
     // User message with context
@@ -162,7 +208,11 @@ export class AgentExecutionService {
       '',
       `Provide your output in Markdown format with structured sections.`,
       `Include a summary section at the end.`,
-    ].filter(Boolean).join('\n');
+      sourceContext ? '' : '',
+      sourceContext || '',
+    ]
+      .filter(Boolean)
+      .join('\n');
 
     messages.push({ role: 'user', content: userContent });
 
@@ -184,7 +234,9 @@ export class AgentExecutionService {
       '3. Output structured Markdown with clear sections.',
       '4. Include a "## Summary" section at the end.',
       '5. Be precise, technical, and actionable.',
-    ].filter(Boolean).join('\n');
+    ]
+      .filter(Boolean)
+      .join('\n');
   }
 
   private async log(
@@ -196,7 +248,9 @@ export class AgentExecutionService {
   ): Promise<void> {
     try {
       const log = this.logRepo.create({
-        projectId, runId, agentRunId,
+        projectId,
+        runId,
+        agentRunId,
         logLevel: level,
         message,
         contextJson: { source: 'agent-execution', timestamp: new Date().toISOString() },

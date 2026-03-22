@@ -1,5 +1,5 @@
-import { IsEnum, IsInt, IsObject, IsOptional, IsString, Length, Matches } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsEnum, IsInt, IsObject, IsOptional, IsString, Length, Matches } from 'class-validator';
 import { AgentType, StatusBase } from '../../../common/enums';
 
 export class CreateAgentDto {
@@ -9,6 +9,7 @@ export class CreateAgentDto {
   @ApiPropertyOptional() @IsOptional() @IsString() description?: string;
   @ApiPropertyOptional() @IsOptional() @IsInt() executionOrder?: number;
   @ApiPropertyOptional() @IsOptional() @IsObject() config?: Record<string, unknown>;
+  @ApiPropertyOptional() @IsOptional() @IsString() systemPrompt?: string;
 }
 
 export class UpdateAgentDto {
@@ -17,4 +18,5 @@ export class UpdateAgentDto {
   @ApiPropertyOptional({ enum: StatusBase }) @IsOptional() @IsEnum(StatusBase) status?: StatusBase;
   @ApiPropertyOptional() @IsOptional() @IsInt() executionOrder?: number;
   @ApiPropertyOptional() @IsOptional() @IsObject() config?: Record<string, unknown>;
+  @ApiPropertyOptional() @IsOptional() @IsString() systemPrompt?: string;
 }

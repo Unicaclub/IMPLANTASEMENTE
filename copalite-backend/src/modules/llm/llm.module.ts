@@ -2,23 +2,38 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 // Entities needed for agent execution
-import { AgentEntity } from '../agents/entities/agent.entity';
-import { AgentRunEntity } from '../agent-runs/entities/agent-run.entity';
 import { AgentOutputEntity } from '../agent-outputs/entities/agent-output.entity';
+import { AgentRunEntity } from '../agent-runs/entities/agent-run.entity';
+import { AgentEntity } from '../agents/entities/agent.entity';
 import { LogEntity } from '../logs/entities/log.entity';
 import { PromptEntity } from '../prompts/entities/prompt.entity';
-import { RunEntity } from '../runs/entities/run.entity';
 import { RunStepEntity } from '../runs/entities/run-step.entity';
+import { RunEntity } from '../runs/entities/run.entity';
+
+// Registry entities for population
+import { ApiRegistryEntity } from '../api-registry/entities/api-registry.entity';
+import { EvidenceRegistryEntity } from '../evidence-registry/entities/evidence-registry.entity';
+import { ModuleRegistryEntity } from '../modules-registry/entities/module-registry.entity';
+import { RouteRegistryEntity } from '../route-registry/entities/route-registry.entity';
+import { SchemaFieldEntity } from '../schema-registry/entities/schema-field.entity';
+import { SchemaRegistryEntity } from '../schema-registry/entities/schema-registry.entity';
+import { UiRegistryEntity } from '../ui-registry/entities/ui-registry.entity';
+
+// Source entity for ingestion
+import { SourceEntity } from '../sources/entities/source.entity';
 
 // LLM Providers
 import { AnthropicProvider } from './providers/anthropic.provider';
-import { OpenaiProvider } from './providers/openai.provider';
 import { GoogleProvider } from './providers/google.provider';
 import { OllamaProvider } from './providers/ollama.provider';
+import { OpenaiProvider } from './providers/openai.provider';
 
 // Factory & Execution
-import { LlmProviderFactory } from './llm-provider.factory';
 import { AgentExecutionService } from './agent-execution.service';
+import { LlmProviderFactory } from './llm-provider.factory';
+import { OutputParserService } from './output-parser.service';
+import { RegistryPopulationService } from './registry-population.service';
+import { SourceIngestionService } from './source-ingestion.service';
 
 @Module({
   imports: [
@@ -30,6 +45,16 @@ import { AgentExecutionService } from './agent-execution.service';
       PromptEntity,
       RunEntity,
       RunStepEntity,
+      // Registry entities
+      ApiRegistryEntity,
+      EvidenceRegistryEntity,
+      ModuleRegistryEntity,
+      RouteRegistryEntity,
+      SchemaFieldEntity,
+      SchemaRegistryEntity,
+      UiRegistryEntity,
+      // Source entity
+      SourceEntity,
     ]),
   ],
   providers: [
@@ -39,7 +64,16 @@ import { AgentExecutionService } from './agent-execution.service';
     OllamaProvider,
     LlmProviderFactory,
     AgentExecutionService,
+    OutputParserService,
+    RegistryPopulationService,
+    SourceIngestionService,
   ],
-  exports: [AgentExecutionService, LlmProviderFactory],
+  exports: [
+    AgentExecutionService,
+    LlmProviderFactory,
+    OutputParserService,
+    RegistryPopulationService,
+    SourceIngestionService,
+  ],
 })
 export class LlmModule {}

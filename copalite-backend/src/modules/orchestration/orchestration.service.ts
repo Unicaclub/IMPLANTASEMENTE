@@ -1,9 +1,4 @@
-import {
-    BadRequestException,
-    Injectable,
-    Logger,
-    NotFoundException,
-} from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
@@ -23,20 +18,17 @@ import { AgentExecutionService } from '../llm/agent-execution.service';
 
 // Enums
 import {
-    ConfidenceStatus,
-    LogLevel,
-    OutputType,
-    RunStatus,
-    RunType,
-    StatusBase,
-    ValidationStatus,
+  ConfidenceStatus,
+  LogLevel,
+  OutputType,
+  RunStatus,
+  RunType,
+  StatusBase,
+  ValidationStatus,
 } from '../../common/enums';
 
 // Interfaces
-import {
-    AgentPipelineStep,
-    RUN_PIPELINES
-} from './interfaces';
+import { AgentPipelineStep, RUN_PIPELINES } from './interfaces';
 
 // DTOs
 import { AdvanceStepDto, StartPipelineDto } from './dto';
@@ -73,7 +65,10 @@ export class OrchestrationService {
   // Creates run + all steps + first agent run
   // =========================================
 
-  async startPipeline(dto: StartPipelineDto, userId: string): Promise<{
+  async startPipeline(
+    dto: StartPipelineDto,
+    userId: string,
+  ): Promise<{
     run: RunEntity;
     steps: RunStepEntity[];
     firstAgentRun: AgentRunEntity | null;
@@ -97,7 +92,11 @@ export class OrchestrationService {
     });
     const savedRun = await this.runRepo.save(run);
 
-    await this.log(savedRun.projectId, savedRun.id, null, LogLevel.INFO,
+    await this.log(
+      savedRun.projectId,
+      savedRun.id,
+      null,
+      LogLevel.INFO,
       `Pipeline started: ${dto.runType} — "${dto.title}"`,
     );
 
@@ -133,7 +132,12 @@ export class OrchestrationService {
     }
 
     // Fire notification (non-blocking)
-    this.notifyPipeline(dto.projectId, userId, 'pipeline_started', `Pipeline started: ${dto.title}`);
+    this.notifyPipeline(
+      dto.projectId,
+      userId,
+      'pipeline_started',
+      `Pipeline started: ${dto.title}`,
+    );
 
     return {
       run: savedRun,
@@ -232,11 +236,20 @@ export class OrchestrationService {
           await queryRunner.manager.save(run);
           await queryRunner.commitTransaction();
 
-          await this.log(run.projectId, runId, null, LogLevel.ERROR,
+          await this.log(
+            run.projectId,
+            runId,
+            null,
+            LogLevel.ERROR,
             `Pipeline failed: required step "${currentStep.stepName}" failed`,
           );
 
-          this.notifyPipeline(run.projectId, null, 'pipeline_failed', `Pipeline failed: ${run.title} — step "${currentStep.stepName}"`);
+          this.notifyPipeline(
+            run.projectId,
+            null,
+            'pipeline_failed',
+            `Pipeline failed: ${run.title} — step "${currentStep.stepName}"`,
+          );
 
           return {
             completedStep: currentStep,
@@ -260,11 +273,20 @@ export class OrchestrationService {
         await queryRunner.manager.save(run);
         await queryRunner.commitTransaction();
 
-        await this.log(run.projectId, runId, null, LogLevel.INFO,
+        await this.log(
+          run.projectId,
+          runId,
+          null,
+          LogLevel.INFO,
           `Pipeline completed successfully: ${run.title}`,
         );
 
-        this.notifyPipeline(run.projectId, null, 'pipeline_completed', `Pipeline completed: ${run.title}`);
+        this.notifyPipeline(
+          run.projectId,
+          null,
+          'pipeline_completed',
+          `Pipeline completed: ${run.title}`,
+        );
 
         return {
           completedStep: currentStep,
@@ -277,7 +299,10 @@ export class OrchestrationService {
 
       // Activate next step within same transaction
       const agent = await queryRunner.manager.findOne(AgentEntity, {
-        where: { agentType: RUN_PIPELINES[run.runType][nextStep.stepOrder - 1].agentType, status: StatusBase.ACTIVE },
+        where: {
+          agentType: RUN_PIPELINES[run.runType][nextStep.stepOrder - 1].agentType,
+          status: StatusBase.ACTIVE,
+        },
       });
       if (!agent) {
         throw new BadRequestException(
@@ -300,11 +325,18 @@ export class OrchestrationService {
 
       await queryRunner.commitTransaction();
 
-      await this.log(run.projectId, runId, currentAgentRun.id,
+      await this.log(
+        run.projectId,
+        runId,
+        currentAgentRun.id,
         success ? LogLevel.INFO : LogLevel.WARN,
         `Step ${currentStep.stepOrder} ${success ? 'completed' : 'failed (optional)'}: ${currentStep.stepName}`,
       );
-      await this.log(run.projectId, runId, savedNextAgentRun.id, LogLevel.INFO,
+      await this.log(
+        run.projectId,
+        runId,
+        savedNextAgentRun.id,
+        LogLevel.INFO,
         `Step ${nextStep.stepOrder} started: ${nextStep.stepName} (agent: ${agent.name})`,
       );
 
@@ -356,9 +388,10 @@ export class OrchestrationService {
           relations: ['agent'],
           order: { createdAt: 'ASC' },
         });
-        return { ...step, agentRuns: agentRuns.filter(ar =>
-          ar.createdAt >= (step.startedAt || new Date(0))
-        )};
+        return {
+          ...step,
+          agentRuns: agentRuns.filter((ar) => ar.createdAt >= (step.startedAt || new Date(0))),
+        };
       }),
     );
 
@@ -418,9 +451,7 @@ export class OrchestrationService {
     run.finishedAt = new Date();
     await this.runRepo.save(run);
 
-    await this.log(run.projectId, runId, null, LogLevel.WARN,
-      `Pipeline cancelled: ${run.title}`,
-    );
+    await this.log(run.projectId, runId, null, LogLevel.WARN, `Pipeline cancelled: ${run.title}`);
 
     return run;
   }
@@ -465,7 +496,11 @@ export class OrchestrationService {
 
     const agentRun = await this.activateStep(run, failedStep, pipelineStep);
 
-    await this.log(run.projectId, runId, agentRun.id, LogLevel.INFO,
+    await this.log(
+      run.projectId,
+      runId,
+      agentRun.id,
+      LogLevel.INFO,
       `Retrying failed step ${failedStep.stepOrder}: ${failedStep.stepName}`,
     );
 
@@ -507,7 +542,10 @@ export class OrchestrationService {
       await this.advanceStep(runId, {
         outputSummary: result.outputSummary || 'Agent execution completed',
         success: result.status === RunStatus.COMPLETED,
-        errorMessage: result.status === RunStatus.FAILED ? result.outputSummary || 'Execution failed' : undefined,
+        errorMessage:
+          result.status === RunStatus.FAILED
+            ? result.outputSummary || 'Execution failed'
+            : undefined,
       });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -548,7 +586,11 @@ export class OrchestrationService {
     });
     const savedAgentRun = await this.agentRunRepo.save(agentRun);
 
-    await this.log(run.projectId, run.id, savedAgentRun.id, LogLevel.INFO,
+    await this.log(
+      run.projectId,
+      run.id,
+      savedAgentRun.id,
+      LogLevel.INFO,
       `Step ${step.stepOrder} started: ${step.stepName} (agent: ${agent.name})`,
     );
 
@@ -579,15 +621,25 @@ export class OrchestrationService {
 
   private notifyPipeline(projectId: string, userId: string | null, type: string, message: string) {
     // Fire and forget — resolve workspaceId from project
-    this.dataSource.getRepository(ProjectEntity).findOne({
-      where: { id: projectId },
-      select: ['workspaceId'],
-    }).then((project) => {
-      if (project?.workspaceId) {
-        this.notificationsService.notify(project.workspaceId, type, message, message, userId || undefined);
-      }
-    }).catch((err: Error) => {
-      this.logger.warn(`Failed to send notification: ${err.message}`);
-    });
+    this.dataSource
+      .getRepository(ProjectEntity)
+      .findOne({
+        where: { id: projectId },
+        select: ['workspaceId'],
+      })
+      .then((project) => {
+        if (project?.workspaceId) {
+          this.notificationsService.notify(
+            project.workspaceId,
+            type,
+            message,
+            message,
+            userId || undefined,
+          );
+        }
+      })
+      .catch((err: Error) => {
+        this.logger.warn(`Failed to send notification: ${err.message}`);
+      });
   }
 }

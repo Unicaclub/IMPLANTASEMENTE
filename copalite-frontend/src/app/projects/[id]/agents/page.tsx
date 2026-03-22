@@ -1,35 +1,49 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
 import {
-  Bot, Loader2, AlertTriangle, RotateCw, Zap,
-  CheckCircle2, XCircle, Archive, Clock
-} from 'lucide-react';
-import Sidebar from '@/components/layout/Sidebar';
-import Header from '@/components/layout/Header';
-import StatusBadge from '@/components/shared/StatusBadge';
-import Skeleton from '@/components/shared/Skeleton';
-import { api } from '@/lib/api';
-import type { Agent } from '@/types';
+  Bot,
+  Loader2,
+  AlertTriangle,
+  RotateCw,
+  Zap,
+  CheckCircle2,
+  XCircle,
+  Archive,
+  Clock,
+} from "lucide-react";
+import Sidebar from "@/components/layout/Sidebar";
+import Header from "@/components/layout/Header";
+import StatusBadge from "@/components/shared/StatusBadge";
+import Skeleton from "@/components/shared/Skeleton";
+import { api } from "@/lib/api";
+import type { Agent } from "@/types";
 
 const AGENT_TYPE_COLORS: Record<string, { bg: string; text: string }> = {
-  orchestrator:       { bg: 'bg-emerald-500/10', text: 'text-emerald-400' },
-  architect:          { bg: 'bg-sky-500/10', text: 'text-sky-400' },
-  database_builder:   { bg: 'bg-violet-500/10', text: 'text-violet-400' },
-  backend_builder:    { bg: 'bg-amber-500/10', text: 'text-amber-400' },
-  frontend_builder:   { bg: 'bg-rose-500/10', text: 'text-rose-400' },
-  validator:          { bg: 'bg-cyan-500/10', text: 'text-cyan-400' },
-  doc_writer:         { bg: 'bg-lime-500/10', text: 'text-lime-400' },
-  devops_agent:       { bg: 'bg-orange-500/10', text: 'text-orange-400' },
-  qa_test_agent:      { bg: 'bg-pink-500/10', text: 'text-pink-400' },
+  orchestrator: { bg: "bg-emerald-500/10", text: "text-emerald-400" },
+  architect: { bg: "bg-sky-500/10", text: "text-sky-400" },
+  schema_mapper: { bg: "bg-violet-500/10", text: "text-violet-400" },
+  api_analyzer: { bg: "bg-amber-500/10", text: "text-amber-400" },
+  ui_inspector: { bg: "bg-rose-500/10", text: "text-rose-400" },
+  code_auditor: { bg: "bg-cyan-500/10", text: "text-cyan-400" },
+  evidence_collector: { bg: "bg-lime-500/10", text: "text-lime-400" },
+  comparator: { bg: "bg-orange-500/10", text: "text-orange-400" },
+  report_generator: { bg: "bg-pink-500/10", text: "text-pink-400" },
 };
 
-const PROVIDER_COLORS: Record<string, { bg: string; text: string; label: string }> = {
-  anthropic: { bg: 'bg-amber-500/10', text: 'text-amber-300', label: 'Anthropic' },
-  openai:    { bg: 'bg-green-500/10', text: 'text-green-300', label: 'OpenAI' },
-  google:    { bg: 'bg-blue-500/10', text: 'text-blue-300', label: 'Google' },
-  ollama:    { bg: 'bg-purple-500/10', text: 'text-purple-300', label: 'Ollama' },
+const PROVIDER_COLORS: Record<
+  string,
+  { bg: string; text: string; label: string }
+> = {
+  anthropic: {
+    bg: "bg-amber-500/10",
+    text: "text-amber-300",
+    label: "Anthropic",
+  },
+  openai: { bg: "bg-green-500/10", text: "text-green-300", label: "OpenAI" },
+  google: { bg: "bg-blue-500/10", text: "text-blue-300", label: "Google" },
+  ollama: { bg: "bg-purple-500/10", text: "text-purple-300", label: "Ollama" },
 };
 
 const STATUS_ICONS: Record<string, React.ElementType> = {
@@ -39,11 +53,21 @@ const STATUS_ICONS: Record<string, React.ElementType> = {
 };
 
 function AgentCard({ agent }: { agent: Agent }) {
-  const typeColor = AGENT_TYPE_COLORS[agent.agentType] ?? { bg: 'bg-coal-700/40', text: 'text-coal-300' };
+  const typeColor = AGENT_TYPE_COLORS[agent.agentType] ?? {
+    bg: "bg-coal-700/40",
+    text: "text-coal-300",
+  };
   const StatusIcon = STATUS_ICONS[agent.status] ?? Clock;
-  const statusColor = agent.status === 'active' ? 'text-emerald-400' : agent.status === 'inactive' ? 'text-coal-500' : 'text-amber-400';
+  const statusColor =
+    agent.status === "active"
+      ? "text-emerald-400"
+      : agent.status === "inactive"
+        ? "text-coal-500"
+        : "text-amber-400";
   const providerKey = (agent.config?.provider as string) || null;
-  const providerInfo = providerKey ? PROVIDER_COLORS[providerKey] ?? null : null;
+  const providerInfo = providerKey
+    ? (PROVIDER_COLORS[providerKey] ?? null)
+    : null;
 
   return (
     <div className="card-hover p-5 space-y-3">
@@ -53,7 +77,9 @@ function AgentCard({ agent }: { agent: Agent }) {
             <Bot size={20} className={typeColor.text} />
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-coal-100">{agent.name}</h3>
+            <h3 className="text-sm font-semibold text-coal-100">
+              {agent.name}
+            </h3>
             <p className="text-xs font-mono text-coal-500">{agent.slug}</p>
           </div>
         </div>
@@ -61,15 +87,21 @@ function AgentCard({ agent }: { agent: Agent }) {
       </div>
 
       {agent.description && (
-        <p className="text-xs text-coal-400 line-clamp-2">{agent.description}</p>
+        <p className="text-xs text-coal-400 line-clamp-2">
+          {agent.description}
+        </p>
       )}
 
       <div className="flex items-center gap-3 pt-1 flex-wrap">
-        <span className={`badge text-[10px] ${typeColor.bg} ${typeColor.text} border border-current/20`}>
-          {agent.agentType.replace(/_/g, ' ')}
+        <span
+          className={`badge text-[10px] ${typeColor.bg} ${typeColor.text} border border-current/20`}
+        >
+          {agent.agentType.replace(/_/g, " ")}
         </span>
         {providerInfo && (
-          <span className={`badge text-[10px] ${providerInfo.bg} ${providerInfo.text} border border-current/20`}>
+          <span
+            className={`badge text-[10px] ${providerInfo.bg} ${providerInfo.text} border border-current/20`}
+          >
             {providerInfo.label}
           </span>
         )}
@@ -97,18 +129,20 @@ export default function AgentsPage() {
 
   async function loadAgents() {
     try {
-      const data = await api.listAgents() as Agent[];
+      const data = (await api.listAgents()) as Agent[];
       setAgents(data);
     } catch (err: any) {
       console.error(err);
-      setError(err.message || 'Failed to load agents');
+      setError(err.message || "Failed to load agents");
     } finally {
       setLoading(false);
     }
   }
 
-  const activeCount = agents.filter(a => a.status === 'active').length;
-  const sorted = [...agents].sort((a, b) => (a.executionOrder ?? 99) - (b.executionOrder ?? 99));
+  const activeCount = agents.filter((a) => a.status === "active").length;
+  const sorted = [...agents].sort(
+    (a, b) => (a.executionOrder ?? 99) - (b.executionOrder ?? 99),
+  );
 
   return (
     <div className="flex min-h-screen">
@@ -116,7 +150,7 @@ export default function AgentsPage() {
       <main className="flex-1 ml-[260px]">
         <Header
           title="Agents"
-          subtitle={`${activeCount} active agent${activeCount !== 1 ? 's' : ''} available`}
+          subtitle={`${activeCount} active agent${activeCount !== 1 ? "s" : ""} available`}
         />
 
         <div className="p-8 space-y-6">
@@ -124,7 +158,14 @@ export default function AgentsPage() {
             <div className="card p-8 text-center border-rose-500/20">
               <AlertTriangle className="mx-auto text-rose-400 mb-3" size={32} />
               <p className="text-rose-400 font-medium">{error}</p>
-              <button onClick={() => { setError(null); setLoading(true); loadAgents(); }} className="btn-secondary mt-4 gap-2">
+              <button
+                onClick={() => {
+                  setError(null);
+                  setLoading(true);
+                  loadAgents();
+                }}
+                className="btn-secondary mt-4 gap-2"
+              >
                 <RotateCw size={14} /> Retry
               </button>
             </div>
@@ -141,7 +182,8 @@ export default function AgentsPage() {
                 <div className="flex items-center gap-2">
                   <Zap size={16} className="text-emerald-400" />
                   <span className="text-sm text-coal-300">
-                    <strong className="text-emerald-400">{activeCount}</strong> active
+                    <strong className="text-emerald-400">{activeCount}</strong>{" "}
+                    active
                   </span>
                 </div>
                 <div className="w-px h-4 bg-coal-700" />

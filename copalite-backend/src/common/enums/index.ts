@@ -62,13 +62,13 @@ export enum ConfidenceStatus {
 export enum AgentType {
   ORCHESTRATOR = 'orchestrator',
   ARCHITECT = 'architect',
-  DATABASE_BUILDER = 'database_builder',
-  BACKEND_BUILDER = 'backend_builder',
-  FRONTEND_BUILDER = 'frontend_builder',
-  VALIDATOR = 'validator',
-  DOC_WRITER = 'doc_writer',
-  DEVOPS_AGENT = 'devops_agent',
-  QA_TEST_AGENT = 'qa_test_agent',
+  SCHEMA_MAPPER = 'schema_mapper',
+  API_ANALYZER = 'api_analyzer',
+  UI_INSPECTOR = 'ui_inspector',
+  CODE_AUDITOR = 'code_auditor',
+  EVIDENCE_COLLECTOR = 'evidence_collector',
+  COMPARATOR = 'comparator',
+  REPORT_GENERATOR = 'report_generator',
 }
 
 export enum PromptType {
