@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, FolderKanban, Database, Play, GitBranch,
   FileSearch, ListChecks, CheckSquare, Shield, Settings,
-  LogOut, Boxes, Globe, Code2, Layers, MonitorSmartphone
+  LogOut, Boxes, Globe, Code2, Layers, MonitorSmartphone, Activity
 } from 'lucide-react';
 import clsx from 'clsx';
 import { api } from '@/lib/api';
@@ -22,6 +22,7 @@ export default function Sidebar({ projectId, projectName }: SidebarProps) {
 
   const mainNav = [
     { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+    { label: 'System Health', href: '/dashboard/system', icon: Activity },
     { label: 'Workspaces', href: '/workspaces', icon: Boxes },
   ];
 
@@ -53,7 +54,7 @@ export default function Sidebar({ projectId, projectName }: SidebarProps) {
           <span className="text-lg font-bold tracking-tight text-coal-100">
             Copalite
           </span>
-          <span className="badge-info text-[10px] ml-1">v1</span>
+          <span className="badge-info text-[10px] ml-1">v1.1</span>
         </div>
       </div>
 

@@ -408,6 +408,11 @@ class ApiClient {
   getProjectDashboard(projectId: string) {
     return this.get<any>(`/dashboard/project/${projectId}`);
   }
+
+  // === SYSTEM HEALTH ===
+  getSystemHealth() {
+    return this.get<any>('/system-health/live');
+  }
 }
 
 export const api = new ApiClient();
