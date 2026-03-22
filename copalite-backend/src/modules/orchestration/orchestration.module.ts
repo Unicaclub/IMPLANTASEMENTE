@@ -11,10 +11,12 @@ import { AgentRunEntity } from '../agent-runs/entities/agent-run.entity';
 import { AgentOutputEntity } from '../agent-outputs/entities/agent-output.entity';
 import { LogEntity } from '../logs/entities/log.entity';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { LlmModule } from '../llm/llm.module';
 
 @Module({
   imports: [
     NotificationsModule,
+    LlmModule,
     TypeOrmModule.forFeature([
       RunEntity,
       RunStepEntity,

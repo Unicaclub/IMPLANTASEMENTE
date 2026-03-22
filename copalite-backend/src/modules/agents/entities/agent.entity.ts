@@ -30,6 +30,9 @@ export class AgentEntity {
   @Column({ name: 'execution_order', type: 'int', nullable: true })
   executionOrder: number | null;
 
+  @Column({ type: 'jsonb', nullable: true, default: null })
+  config: Record<string, unknown> | null;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 

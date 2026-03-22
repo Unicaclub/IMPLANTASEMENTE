@@ -38,7 +38,10 @@ import { EvidenceRegistryModule } from './modules/evidence-registry/evidence-reg
 // Modules - Phase 4b: Orchestration Engine
 import { OrchestrationModule } from './modules/orchestration/orchestration.module';
 
-// Modules - Phase 4c: Dashboard
+// Modules - Phase 4c: LLM Integration
+import { LlmModule } from './modules/llm/llm.module';
+
+// Modules - Phase 4d: Dashboard
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 
 // Modules - Phase 5: Comparison and Action
@@ -100,6 +103,7 @@ import { ActivityHistoryModule } from './modules/activity-history/activity-histo
 
     // Phase 4b
     OrchestrationModule,
+    LlmModule,
     DashboardModule,
 
     // Phase 5

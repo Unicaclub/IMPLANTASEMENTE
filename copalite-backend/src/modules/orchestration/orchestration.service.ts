@@ -4,6 +4,7 @@ import {
     Logger,
     NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 
@@ -16,6 +17,9 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { ProjectEntity } from '../projects/entities/project.entity';
 import { RunStepEntity } from '../runs/entities/run-step.entity';
 import { RunEntity } from '../runs/entities/run.entity';
+
+// LLM Agent Execution
+import { AgentExecutionService } from '../llm/agent-execution.service';
 
 // Enums
 import {
@@ -56,7 +60,13 @@ export class OrchestrationService {
     private readonly logRepo: Repository<LogEntity>,
     private readonly dataSource: DataSource,
     private readonly notificationsService: NotificationsService,
+    private readonly agentExecutionService: AgentExecutionService,
+    private readonly configService: ConfigService,
   ) {}
+
+  private get autoExecute(): boolean {
+    return this.configService.get<string>('AGENT_AUTO_EXECUTE', 'false') === 'true';
+  }
 
   // =========================================
   // 1. START PIPELINE
@@ -113,6 +123,13 @@ export class OrchestrationService {
       await this.runRepo.save(savedRun);
 
       firstAgentRun = await this.activateStep(savedRun, steps[0], pipeline[0]);
+
+      // Auto-execute if enabled
+      if (this.autoExecute && firstAgentRun) {
+        this.executeAndAdvance(savedRun.id, firstAgentRun.id).catch((err) => {
+          this.logger.error(`Auto-execute failed for first step: ${err.message}`);
+        });
+      }
     }
 
     // Fire notification (non-blocking)
@@ -291,6 +308,13 @@ export class OrchestrationService {
         `Step ${nextStep.stepOrder} started: ${nextStep.stepName} (agent: ${agent.name})`,
       );
 
+      // Auto-execute next step if enabled
+      if (this.autoExecute) {
+        this.executeAndAdvance(runId, savedNextAgentRun.id).catch((err) => {
+          this.logger.error(`Auto-execute failed for step ${nextStep.stepOrder}: ${err.message}`);
+        });
+      }
+
       return {
         completedStep: currentStep,
         completedAgentRun: currentAgentRun,
@@ -445,6 +469,13 @@ export class OrchestrationService {
       `Retrying failed step ${failedStep.stepOrder}: ${failedStep.stepName}`,
     );
 
+    // Auto-execute retry if enabled
+    if (this.autoExecute) {
+      this.executeAndAdvance(runId, agentRun.id).catch((err) => {
+        this.logger.error(`Auto-execute retry failed: ${err.message}`);
+      });
+    }
+
     return { retriedStep: failedStep, agentRun };
   }
 
@@ -463,6 +494,27 @@ export class OrchestrationService {
   // =========================================
   // PRIVATE HELPERS
   // =========================================
+
+  /**
+   * Fire-and-forget: execute the agent run via LLM, then auto-advance the pipeline.
+   * If execution fails, the step is marked as failed but the pipeline is NOT cancelled.
+   */
+  private async executeAndAdvance(runId: string, agentRunId: string): Promise<void> {
+    try {
+      const result = await this.agentExecutionService.execute(agentRunId);
+
+      // Auto-advance: call advanceStep with the result
+      await this.advanceStep(runId, {
+        outputSummary: result.outputSummary || 'Agent execution completed',
+        success: result.status === RunStatus.COMPLETED,
+        errorMessage: result.status === RunStatus.FAILED ? result.outputSummary || 'Execution failed' : undefined,
+      });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      this.logger.error(`executeAndAdvance failed for agentRun ${agentRunId}: ${msg}`);
+      // Don't re-throw — this runs fire-and-forget
+    }
+  }
 
   private async activateStep(
     run: RunEntity,
