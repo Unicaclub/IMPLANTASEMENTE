@@ -9,6 +9,7 @@ import {
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import StatusBadge from '@/components/shared/StatusBadge';
+import { useToast } from '@/components/shared/Toast';
 import { api } from '@/lib/api';
 
 const TYPE_CONFIG: Record<string, { icon: any; color: string; bg: string }> = {
@@ -34,6 +35,7 @@ export default function SourcesPage() {
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState({ name: '', sourceType: 'repository', location: '' });
   const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     loadSources();
@@ -60,7 +62,7 @@ export default function SourcesPage() {
       setLoading(true);
       await loadSources();
     } catch (err: any) {
-      alert(err.message);
+      toast('error', err.message || 'Failed to create source');
     } finally {
       setCreating(false);
     }

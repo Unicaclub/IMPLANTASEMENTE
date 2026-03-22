@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
+import { useToast } from '@/components/shared/Toast';
 import { api } from '@/lib/api';
 
 const TYPE_ICONS: Record<string, any> = {
@@ -47,6 +48,7 @@ export default function BacklogPage() {
   const [search, setSearch] = useState('');
   const [processing, setProcessing] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     loadBacklog();
@@ -70,7 +72,7 @@ export default function BacklogPage() {
       await api.approveBacklog(itemId, approve);
       await loadBacklog();
     } catch (err: any) {
-      alert(err.message);
+      toast('error', err.message || 'Failed to update backlog item');
     } finally {
       setProcessing(null);
     }
@@ -82,7 +84,7 @@ export default function BacklogPage() {
       await api.createTaskFromBacklog(itemId);
       await loadBacklog();
     } catch (err: any) {
-      alert(err.message);
+      toast('error', err.message || 'Failed to create task');
     } finally {
       setProcessing(null);
     }

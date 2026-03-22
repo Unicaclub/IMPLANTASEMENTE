@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
+import { useToast } from '@/components/shared/Toast';
 import { api } from '@/lib/api';
 
 const STATUS_CONFIG: Record<string, { color: string; bg: string; icon: any; label: string }> = {
@@ -39,6 +40,7 @@ export default function OrchestrationPage() {
   const [showStartModal, setShowStartModal] = useState(false);
   const [startForm, setStartForm] = useState({ runType: 'discovery', title: '', goal: '', scopeText: '' });
   const [starting, setStarting] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     loadData();
@@ -88,7 +90,7 @@ export default function OrchestrationPage() {
       await loadData();
       await selectRun(result.run);
     } catch (err: any) {
-      alert(err.message);
+      toast('error', err.message || 'Failed to start pipeline');
     } finally {
       setStarting(false);
     }
@@ -104,7 +106,7 @@ export default function OrchestrationPage() {
       await selectRun(selectedRun);
       await loadData();
     } catch (err: any) {
-      alert(err.message);
+      toast('error', err.message || 'Failed to advance step');
     }
   }
 
@@ -115,7 +117,7 @@ export default function OrchestrationPage() {
       await selectRun(selectedRun);
       await loadData();
     } catch (err: any) {
-      alert(err.message);
+      toast('error', err.message || 'Failed to cancel pipeline');
     }
   }
 
@@ -126,7 +128,7 @@ export default function OrchestrationPage() {
       await selectRun(selectedRun);
       await loadData();
     } catch (err: any) {
-      alert(err.message);
+      toast('error', err.message || 'Failed to retry pipeline');
     }
   }
 

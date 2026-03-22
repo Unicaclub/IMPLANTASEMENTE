@@ -9,6 +9,8 @@ import {
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import StatusBadge from '@/components/shared/StatusBadge';
+import Skeleton from '@/components/shared/Skeleton';
+import { useToast } from '@/components/shared/Toast';
 import { api } from '@/lib/api';
 
 export default function DashboardPage() {
@@ -23,6 +25,7 @@ export default function DashboardPage() {
   const [wsForm, setWsForm] = useState({ name: '', slug: '' });
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     loadWorkspaces();
@@ -66,7 +69,7 @@ export default function DashboardPage() {
       setWorkspaces(prev => [...prev, ws]);
       await selectWorkspace(ws.id);
     } catch (err: any) {
-      alert(err.message);
+      toast('error', err.message || 'Failed to create workspace');
     } finally {
       setCreating(false);
     }
@@ -108,8 +111,11 @@ export default function DashboardPage() {
           )}
 
           {!error && loading ? (
-            <div className="flex items-center justify-center h-64">
-              <div className="animate-pulse-slow text-coal-500">Loading...</div>
+            <div className="space-y-6">
+              <Skeleton variant="card" />
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <Skeleton variant="card" count={3} />
+              </div>
             </div>
           ) : (
             <>
