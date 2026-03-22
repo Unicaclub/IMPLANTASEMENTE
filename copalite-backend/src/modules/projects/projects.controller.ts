@@ -1,8 +1,9 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiQuery, ApiTags } from '@nestjs/swagger';
-import { ProjectsService } from './projects.service';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { PaginationQueryDto } from '../../common/pipes/pagination';
 import { CreateProjectDto, UpdateProjectDto } from './dto';
-import { ProjectAccessGuard } from '../../common/guards/project-access.guard';
+import { ProjectsService } from './projects.service';
 
 @ApiTags('Projects')
 @ApiBearerAuth()
@@ -11,14 +12,17 @@ export class ProjectsController {
   constructor(private readonly projectsService: ProjectsService) {}
 
   @Post()
-  async create(@Body() dto: CreateProjectDto) {
-    return this.projectsService.create(dto);
+  async create(@Body() dto: CreateProjectDto, @CurrentUser('id') userId: string) {
+    return this.projectsService.create(dto, userId);
   }
 
   @Get()
   @ApiQuery({ name: 'workspaceId', required: true })
-  async findAll(@Query('workspaceId', ParseUUIDPipe) workspaceId: string) {
-    return this.projectsService.findAllByWorkspace(workspaceId);
+  async findAll(
+    @Query('workspaceId', ParseUUIDPipe) workspaceId: string,
+    @Query() pagination: PaginationQueryDto,
+  ) {
+    return this.projectsService.findAllByWorkspace(workspaceId, pagination);
   }
 
   @Get(':id')

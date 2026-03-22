@@ -1,9 +1,11 @@
+import { Logger, RequestMethod, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
-import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
-import helmet from 'helmet';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import * as cookieParser from 'cookie-parser';
+import helmet from 'helmet';
 import { AppModule } from './app.module';
+import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
+import { RequestLoggingInterceptor } from './common/interceptors/request-logging.interceptor';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -14,8 +16,10 @@ async function bootstrap() {
   // Cookie parser (for refresh tokens)
   app.use(cookieParser());
 
-  // Global prefix
-  app.setGlobalPrefix('api/v1');
+  // Global prefix (/health excluded for infrastructure probes)
+  app.setGlobalPrefix('api/v1', {
+    exclude: [{ path: 'health', method: RequestMethod.GET }],
+  });
 
   // Validation pipe
   app.useGlobalPipes(
@@ -28,6 +32,10 @@ async function bootstrap() {
       },
     }),
   );
+
+  // Global interceptors and filters (observability)
+  app.useGlobalInterceptors(new RequestLoggingInterceptor());
+  app.useGlobalFilters(new AllExceptionsFilter());
 
   // CORS
   app.enableCors({
@@ -49,8 +57,9 @@ async function bootstrap() {
   const port = process.env.APP_PORT || 3000;
   await app.listen(port);
 
-  console.log(`Copalite API running on port ${port}`);
-  console.log(`Swagger docs: http://localhost:${port}/api/docs`);
+  const logger = new Logger('Bootstrap');
+  logger.log(`Copalite API running on port ${port}`);
+  logger.log(`Swagger docs: http://localhost:${port}/api/docs`);
 }
 
 bootstrap();

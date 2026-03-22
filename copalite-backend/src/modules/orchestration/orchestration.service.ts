@@ -1,42 +1,41 @@
 import {
-  BadRequestException,
-  Injectable,
-  Logger,
-  NotFoundException,
+    BadRequestException,
+    Injectable,
+    Logger,
+    NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 
 // Entities
-import { RunEntity } from '../runs/entities/run.entity';
-import { RunStepEntity } from '../runs/entities/run-step.entity';
-import { AgentEntity } from '../agents/entities/agent.entity';
-import { AgentRunEntity } from '../agent-runs/entities/agent-run.entity';
 import { AgentOutputEntity } from '../agent-outputs/entities/agent-output.entity';
+import { AgentRunEntity } from '../agent-runs/entities/agent-run.entity';
+import { AgentEntity } from '../agents/entities/agent.entity';
 import { LogEntity } from '../logs/entities/log.entity';
 import { NotificationsService } from '../notifications/notifications.service';
+import { ProjectEntity } from '../projects/entities/project.entity';
+import { RunStepEntity } from '../runs/entities/run-step.entity';
+import { RunEntity } from '../runs/entities/run.entity';
 
 // Enums
 import {
-  RunStatus,
-  RunType,
-  AgentType,
-  ConfidenceStatus,
-  LogLevel,
-  OutputType,
-  ValidationStatus,
+    ConfidenceStatus,
+    LogLevel,
+    OutputType,
+    RunStatus,
+    RunType,
+    StatusBase,
+    ValidationStatus,
 } from '../../common/enums';
 
 // Interfaces
 import {
-  RUN_PIPELINES,
-  AgentPipelineStep,
-  PipelineExecutionResult,
-  AgentStepResult,
+    AgentPipelineStep,
+    RUN_PIPELINES
 } from './interfaces';
 
 // DTOs
-import { StartPipelineDto, AdvanceStepDto } from './dto';
+import { AdvanceStepDto, StartPipelineDto } from './dto';
 
 @Injectable()
 export class OrchestrationService {
@@ -207,7 +206,7 @@ export class OrchestrationService {
 
       // If step failed, decide: block or continue
       if (!success) {
-        const pipeline = RUN_PIPELINES[run.runType as RunType];
+        const pipeline = RUN_PIPELINES[run.runType];
         const pipelineStep = pipeline[currentStep.stepOrder - 1];
 
         if (pipelineStep?.required) {
@@ -261,11 +260,11 @@ export class OrchestrationService {
 
       // Activate next step within same transaction
       const agent = await queryRunner.manager.findOne(AgentEntity, {
-        where: { agentType: RUN_PIPELINES[run.runType as RunType][nextStep.stepOrder - 1].agentType as any, status: 'active' as any },
+        where: { agentType: RUN_PIPELINES[run.runType][nextStep.stepOrder - 1].agentType, status: StatusBase.ACTIVE },
       });
       if (!agent) {
         throw new BadRequestException(
-          `Agent not found for type: ${RUN_PIPELINES[run.runType as RunType][nextStep.stepOrder - 1].agentType}`,
+          `Agent not found for type: ${RUN_PIPELINES[run.runType][nextStep.stepOrder - 1].agentType}`,
         );
       }
 
@@ -431,7 +430,7 @@ export class OrchestrationService {
     await this.runRepo.save(run);
 
     // Reactivate the step
-    const pipeline = RUN_PIPELINES[run.runType as RunType];
+    const pipeline = RUN_PIPELINES[run.runType];
     const pipelineStep = pipeline[failedStep.stepOrder - 1];
 
     failedStep.status = RunStatus.PENDING;
@@ -472,7 +471,7 @@ export class OrchestrationService {
   ): Promise<AgentRunEntity> {
     // Find the agent by type
     const agent = await this.agentRepo.findOne({
-      where: { agentType: pipelineStep.agentType, status: 'active' as any },
+      where: { agentType: pipelineStep.agentType, status: StatusBase.ACTIVE },
     });
 
     if (!agent) {
@@ -528,14 +527,14 @@ export class OrchestrationService {
 
   private notifyPipeline(projectId: string, userId: string | null, type: string, message: string) {
     // Fire and forget — resolve workspaceId from project
-    this.dataSource.getRepository('projects').findOne({
+    this.dataSource.getRepository(ProjectEntity).findOne({
       where: { id: projectId },
       select: ['workspaceId'],
-    }).then((project: any) => {
+    }).then((project) => {
       if (project?.workspaceId) {
         this.notificationsService.notify(project.workspaceId, type, message, message, userId || undefined);
       }
-    }).catch((err: any) => {
+    }).catch((err: Error) => {
       this.logger.warn(`Failed to send notification: ${err.message}`);
     });
   }

@@ -1,10 +1,10 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiQuery, ApiTags } from '@nestjs/swagger';
-import { ProjectAccessGuard } from '../../common/guards/project-access.guard';
-import { RunsService } from './runs.service';
-import { CreateRunDto, UpdateRunStatusDto, CreateRunStepDto } from './dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { ProjectAccessGuard } from '../../common/guards/project-access.guard';
 import { PaginationQueryDto } from '../../common/pipes/pagination';
+import { CreateRunDto, CreateRunStepDto, UpdateRunStatusDto } from './dto';
+import { RunsService } from './runs.service';
 
 @ApiTags('Runs')
 @ApiBearerAuth()
@@ -28,8 +28,12 @@ export class RunsController {
   async findById(@Param('id', ParseUUIDPipe) id: string) { return this.runsService.findById(id); }
 
   @Patch(':id/status')
-  async updateStatus(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateRunStatusDto) {
-    return this.runsService.updateStatus(id, dto);
+  async updateStatus(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateRunStatusDto,
+    @CurrentUser('id') userId: string,
+  ) {
+    return this.runsService.updateStatus(id, dto, userId);
   }
 
   @Post(':id/steps')

@@ -1,18 +1,19 @@
-'use client';
+"use client";
 
-import { useEffect } from 'react';
-import { AlertTriangle, RotateCw, ArrowLeft } from 'lucide-react';
-import Sidebar from '@/components/layout/Sidebar';
+import { useEffect } from "react";
+import { AlertTriangle, RotateCw, ArrowLeft } from "lucide-react";
+import Sidebar from "@/components/layout/Sidebar";
+import { toUserMessage } from "@/lib/errors";
 
 export default function ProjectError({
   error,
   reset,
-}: {
+}: Readonly<{
   error: Error & { digest?: string };
   reset: () => void;
-}) {
+}>) {
   useEffect(() => {
-    console.error('Project error:', error);
+    console.error("Project error:", error);
   }, [error]);
 
   return (
@@ -23,9 +24,14 @@ export default function ProjectError({
           <div className="w-14 h-14 rounded-full bg-rose-500/15 flex items-center justify-center mx-auto mb-5">
             <AlertTriangle size={28} className="text-rose-400" />
           </div>
-          <h1 className="text-xl font-bold text-coal-50 mb-2">Error loading project</h1>
+          <h1 className="text-xl font-bold text-coal-50 mb-2">
+            Error loading project
+          </h1>
           <p className="text-sm text-coal-400 mb-6">
-            {error.message || 'Could not load this project page. Please try again.'}
+            {toUserMessage(
+              error,
+              "Could not load this project page. Please try again.",
+            )}
           </p>
           <div className="flex items-center gap-3 justify-center">
             <button onClick={reset} className="btn-primary gap-2">

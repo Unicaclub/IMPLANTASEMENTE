@@ -1,17 +1,22 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { TaskEntity } from './entities/task.entity';
-import { BacklogItemEntity } from '../backlog/entities/backlog-item.entity';
-import { CreateTaskFromBacklogDto, UpdateTaskDto } from './dto';
 import { BacklogStatus } from '../../common/enums';
-import { PaginationQueryDto, PaginatedResponseDto, getPaginationSkipTake } from '../../common/pipes/pagination';
+import { PaginatedResponseDto, PaginationQueryDto, getPaginationSkipTake } from '../../common/pipes/pagination';
+import { BacklogItemEntity } from '../backlog/entities/backlog-item.entity';
+import { NotificationsService } from '../notifications/notifications.service';
+import { ProjectEntity } from '../projects/entities/project.entity';
+import { CreateTaskFromBacklogDto, UpdateTaskDto } from './dto';
+import { TaskEntity } from './entities/task.entity';
 
 @Injectable()
 export class TasksService {
+  private readonly logger = new Logger(TasksService.name);
+
   constructor(
     @InjectRepository(TaskEntity) private readonly taskRepo: Repository<TaskEntity>,
     @InjectRepository(BacklogItemEntity) private readonly backlogRepo: Repository<BacklogItemEntity>,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async createFromBacklog(dto: CreateTaskFromBacklogDto) {
@@ -36,6 +41,8 @@ export class TasksService {
 
     backlogItem.status = BacklogStatus.PLANNED;
     await this.backlogRepo.save(backlogItem);
+
+    this.notifyTaskCreated(saved);
 
     return saved;
   }
@@ -66,5 +73,19 @@ export class TasksService {
     const t = await this.findById(id);
     Object.assign(t, dto);
     return this.taskRepo.save(t);
+  }
+
+  private notifyTaskCreated(task: TaskEntity): void {
+    this.taskRepo.manager.getRepository(ProjectEntity).findOne({
+      where: { id: task.projectId },
+      select: ['workspaceId'],
+    }).then((project) => {
+      if (project?.workspaceId) {
+        const title = `Task created: ${task.title}`;
+        this.notificationsService.notify(project.workspaceId, 'task_created', title, title);
+      }
+    }).catch((err: Error) => {
+      this.logger.warn(`Failed to send task notification: ${err.message}`);
+    });
   }
 }

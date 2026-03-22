@@ -1,18 +1,19 @@
-import {
-  DataSource,
-  EntitySubscriberInterface,
-  EventSubscriber,
-  InsertEvent,
-  UpdateEvent,
-} from 'typeorm';
 import { Logger } from '@nestjs/common';
+import {
+    DataSource,
+    EntitySubscriberInterface,
+    EventSubscriber,
+    InsertEvent,
+    UpdateEvent,
+} from 'typeorm';
 
 import { ActivityHistoryEntity } from '../../modules/activity-history/entities/activity-history.entity';
-import { WorkspaceEntity } from '../../modules/workspaces/entities/workspace.entity';
+import { BacklogItemEntity } from '../../modules/backlog/entities/backlog-item.entity';
 import { ProjectEntity } from '../../modules/projects/entities/project.entity';
 import { RunEntity } from '../../modules/runs/entities/run.entity';
-import { BacklogItemEntity } from '../../modules/backlog/entities/backlog-item.entity';
+import { SourceEntity } from '../../modules/sources/entities/source.entity';
 import { TaskEntity } from '../../modules/tasks/entities/task.entity';
+import { WorkspaceEntity } from '../../modules/workspaces/entities/workspace.entity';
 
 /**
  * Map of tracked entity constructors to their activity_history entity_type label.
@@ -23,6 +24,7 @@ const TRACKED_ENTITIES = new Map<Function, string>([
   [RunEntity, 'run'],
   [BacklogItemEntity, 'backlog_item'],
   [TaskEntity, 'task'],
+  [SourceEntity, 'source'],
 ]);
 
 /**
@@ -30,7 +32,7 @@ const TRACKED_ENTITIES = new Map<Function, string>([
  * e.g. 'backlog_item' -> 'Backlog item'
  */
 function entityLabel(entityType: string): string {
-  const raw = entityType.replace(/_/g, ' ');
+  const raw = entityType.replaceAll('_', ' ');
   return raw.charAt(0).toUpperCase() + raw.slice(1);
 }
 
@@ -103,7 +105,7 @@ export class ActivityHistorySubscriber implements EntitySubscriberInterface {
 
       const entity = event.entity as Record<string, any> | undefined;
       // For update events, entity may be undefined when using QueryBuilder
-      const entityId = entity?.id ?? (event.databaseEntity as any)?.id;
+      const entityId = entity?.id ?? event.databaseEntity?.id;
       if (!entityId) return;
 
       const source = entity ?? event.databaseEntity;
@@ -169,7 +171,8 @@ export class ActivityHistorySubscriber implements EntitySubscriberInterface {
 
       case 'run':
       case 'backlog_item':
-      case 'task': {
+      case 'task':
+      case 'source': {
         const projectId: string | null = entity.projectId ?? null;
         if (!projectId) return { workspaceId: null, projectId: null };
 

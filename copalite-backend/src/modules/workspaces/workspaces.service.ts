@@ -1,23 +1,27 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { WorkspaceEntity } from './entities/workspace.entity';
-import { WorkspaceMemberEntity } from './entities/workspace-member.entity';
+import { StatusBase, WorkspaceMemberRole } from '../../common/enums';
+import { ActivityHistoryService } from '../activity-history/activity-history.service';
 import {
-  CreateWorkspaceDto,
-  UpdateWorkspaceDto,
-  AddWorkspaceMemberDto,
-  UpdateWorkspaceMemberDto,
+    AddWorkspaceMemberDto,
+    CreateWorkspaceDto,
+    UpdateWorkspaceDto,
+    UpdateWorkspaceMemberDto,
 } from './dto';
-import { WorkspaceMemberRole, StatusBase } from '../../common/enums';
+import { WorkspaceMemberEntity } from './entities/workspace-member.entity';
+import { WorkspaceEntity } from './entities/workspace.entity';
 
 @Injectable()
 export class WorkspacesService {
+  private readonly logger = new Logger(WorkspacesService.name);
+
   constructor(
     @InjectRepository(WorkspaceEntity)
     private readonly workspaceRepo: Repository<WorkspaceEntity>,
     @InjectRepository(WorkspaceMemberEntity)
     private readonly memberRepo: Repository<WorkspaceMemberEntity>,
+    private readonly activityHistory: ActivityHistoryService,
   ) {}
 
   async create(dto: CreateWorkspaceDto, ownerUserId: string): Promise<WorkspaceEntity> {
@@ -41,6 +45,17 @@ export class WorkspacesService {
       status: StatusBase.ACTIVE,
     });
     await this.memberRepo.save(membership);
+
+    this.activityHistory.createFromContext({
+      workspaceId: saved.id,
+      userId: ownerUserId,
+      actionType: 'created',
+      entityType: 'workspace',
+      entityId: saved.id,
+      description: `Workspace created: ${saved.slug}`,
+    }).catch((err) => {
+      this.logger.warn(`Failed to log activity: ${err.message}`);
+    });
 
     return saved;
   }

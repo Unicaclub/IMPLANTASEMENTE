@@ -1,12 +1,13 @@
 import {
-  CanActivate,
-  ExecutionContext,
-  ForbiddenException,
-  Injectable,
+    CanActivate,
+    ExecutionContext,
+    ForbiddenException,
+    Injectable,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { WorkspaceMemberEntity } from '../../modules/workspaces/entities/workspace-member.entity';
+import { StatusBase } from '../enums';
 
 @Injectable()
 export class WorkspaceMemberGuard implements CanActivate {
@@ -31,7 +32,7 @@ export class WorkspaceMemberGuard implements CanActivate {
       where: {
         workspaceId,
         userId,
-        status: 'active' as any,
+        status: StatusBase.ACTIVE,
       },
     });
 

@@ -1,17 +1,18 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
+import { Repository } from 'typeorm';
+import { JwtPayload } from '../../common/interfaces/jwt-payload.interface';
 import { UserEntity } from '../users/entities/user.entity';
 import { LoginDto } from './dto/login.dto';
-import { JwtPayload } from '../../common/interfaces/jwt-payload.interface';
 
 @Injectable()
 export class AuthService {
   private readonly refreshSecret: string;
   private readonly refreshExpiration: string;
+  private readonly accessExpirationSeconds: number;
 
   constructor(
     @InjectRepository(UserEntity)
@@ -21,6 +22,7 @@ export class AuthService {
   ) {
     this.refreshSecret = this.configService.get<string>('JWT_SECRET', 'copalite-dev-secret') + '-refresh';
     this.refreshExpiration = '7d';
+    this.accessExpirationSeconds = 15 * 60;
   }
 
   async login(dto: LoginDto) {
@@ -63,7 +65,7 @@ export class AuthService {
       });
 
       const user = await this.userRepo.findOne({ where: { id: payload.sub } });
-      if (!user || user.status !== 'active') {
+      if (user?.status !== 'active') {
         throw new UnauthorizedException('User not found or inactive');
       }
 
@@ -90,6 +92,10 @@ export class AuthService {
       expiresIn: this.refreshExpiration,
     });
 
-    return { accessToken, refreshToken };
+    return {
+      accessToken,
+      refreshToken,
+      accessTokenExpiresAt: new Date(Date.now() + this.accessExpirationSeconds * 1000).toISOString(),
+    };
   }
 }

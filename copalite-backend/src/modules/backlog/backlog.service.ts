@@ -1,11 +1,13 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
-import { BacklogItemEntity } from './entities/backlog-item.entity';
-import { CreateBacklogItemDto, UpdateBacklogItemDto, ApproveBacklogItemDto } from './dto';
 import { BacklogStatus } from '../../common/enums';
-import { PaginationQueryDto, PaginatedResponseDto, getPaginationSkipTake } from '../../common/pipes/pagination';
+import { PaginatedResponseDto, PaginationQueryDto, getPaginationSkipTake } from '../../common/pipes/pagination';
+import { ActivityHistoryService } from '../activity-history/activity-history.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { ProjectEntity } from '../projects/entities/project.entity';
+import { ApproveBacklogItemDto, CreateBacklogItemDto, UpdateBacklogItemDto } from './dto';
+import { BacklogItemEntity } from './entities/backlog-item.entity';
 
 @Injectable()
 export class BacklogService {
@@ -15,6 +17,7 @@ export class BacklogService {
     @InjectRepository(BacklogItemEntity) private readonly repo: Repository<BacklogItemEntity>,
     private readonly notificationsService: NotificationsService,
     private readonly dataSource: DataSource,
+    private readonly activityHistory: ActivityHistoryService,
   ) {}
 
   async create(dto: CreateBacklogItemDto) { return this.repo.save(this.repo.create(dto)); }
@@ -66,20 +69,31 @@ export class BacklogService {
 
     if (dto.approvedForTask) {
       this.notifyProject(item.projectId, 'backlog_approved', `Backlog approved: ${item.title}`, userId);
+
+      this.activityHistory.createFromContext({
+        projectId: item.projectId,
+        userId,
+        actionType: 'approved',
+        entityType: 'backlog_item',
+        entityId: item.id,
+        description: `Backlog item approved: ${item.title}`,
+      }).catch((err) => {
+        this.logger.warn(`Failed to log activity: ${err.message}`);
+      });
     }
 
     return saved;
   }
 
   private notifyProject(projectId: string, type: string, message: string, userId?: string) {
-    this.dataSource.getRepository('projects').findOne({
+    this.dataSource.getRepository(ProjectEntity).findOne({
       where: { id: projectId },
       select: ['workspaceId'],
-    }).then((project: any) => {
+    }).then((project) => {
       if (project?.workspaceId) {
         this.notificationsService.notify(project.workspaceId, type, message, message, userId);
       }
-    }).catch((err: any) => {
+    }).catch((err: Error) => {
       this.logger.warn(`Failed to send notification: ${err.message}`);
     });
   }

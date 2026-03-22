@@ -1,17 +1,18 @@
-'use client';
+"use client";
 
-import { useEffect } from 'react';
-import { AlertTriangle, RotateCw, Home } from 'lucide-react';
+import { useEffect } from "react";
+import { AlertTriangle, RotateCw, Home } from "lucide-react";
+import { toUserMessage } from "@/lib/errors";
 
 export default function GlobalError({
   error,
   reset,
-}: {
+}: Readonly<{
   error: Error & { digest?: string };
   reset: () => void;
-}) {
+}>) {
   useEffect(() => {
-    console.error('Global error:', error);
+    console.error("Global error:", error);
   }, [error]);
 
   return (
@@ -20,9 +21,14 @@ export default function GlobalError({
         <div className="w-14 h-14 rounded-full bg-rose-500/15 flex items-center justify-center mx-auto mb-5">
           <AlertTriangle size={28} className="text-rose-400" />
         </div>
-        <h1 className="text-xl font-bold text-coal-50 mb-2">Something went wrong</h1>
+        <h1 className="text-xl font-bold text-coal-50 mb-2">
+          Something went wrong
+        </h1>
         <p className="text-sm text-coal-400 mb-6">
-          {error.message || 'An unexpected error occurred. Please try again.'}
+          {toUserMessage(
+            error,
+            "An unexpected error occurred. Please try again.",
+          )}
         </p>
         <div className="flex items-center gap-3 justify-center">
           <button onClick={reset} className="btn-primary gap-2">
