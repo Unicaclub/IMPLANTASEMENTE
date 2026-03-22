@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run *)",
+      "Bash(npx tsc *)",
+      "Bash(docker compose *)",
+      "Bash(curl *)",
+      "Bash(psql *)",
+      "Bash(cat *)",
+      "Bash(ls *)",
+      "Bash(grep *)",
+      "Read(*)",
+      "Write(src/**)",
+      "Write(migrations/**)",
+      "Write(.env*)"
+    ]
+  }
+}

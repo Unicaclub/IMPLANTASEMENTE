@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: copalite-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: copalite
+      POSTGRES_PASSWORD: copalite_dev_2024
+      POSTGRES_DB: copalite_db
+    ports:
+      - '5433:5432'
+    volumes:
+      - copalite_pgdata:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U copalite -d copalite_db']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  copalite_pgdata:

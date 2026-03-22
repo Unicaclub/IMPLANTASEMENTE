@@ -1,0 +1,208 @@
+# ============================================
+# COPALITE API v1 — Testes manuais
+# Use com VS Code REST Client ou Insomnia
+# ============================================
+
+### Variáveis
+@baseUrl = http://localhost:3000/api/v1
+@token = SEU_TOKEN_AQUI
+
+# ============================================
+# 1. CRIAR USUÁRIO (público)
+# ============================================
+
+POST {{baseUrl}}/users
+Content-Type: application/json
+
+{
+  "fullName": "Admin Copalite",
+  "email": "admin@copalite.io",
+  "password": "copalite2024"
+}
+
+# ============================================
+# 2. LOGIN
+# ============================================
+
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@copalite.io",
+  "password": "copalite2024"
+}
+
+# ============================================
+# 3. PERFIL DO USUÁRIO LOGADO
+# ============================================
+
+GET {{baseUrl}}/auth/me
+Authorization: Bearer {{token}}
+
+# ============================================
+# 4. CRIAR WORKSPACE
+# ============================================
+
+POST {{baseUrl}}/workspaces
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "name": "Minha Empresa",
+  "slug": "minha-empresa",
+  "description": "Workspace principal da empresa"
+}
+
+# ============================================
+# 5. LISTAR WORKSPACES DO USUÁRIO
+# ============================================
+
+GET {{baseUrl}}/workspaces
+Authorization: Bearer {{token}}
+
+# ============================================
+# 6. CRIAR PROJETO
+# ============================================
+
+POST {{baseUrl}}/projects
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "workspaceId": "UUID_DO_WORKSPACE",
+  "name": "Sistema Legado ERP",
+  "slug": "sistema-legado-erp",
+  "description": "ERP legado em PHP que precisa ser mapeado",
+  "domainType": "fintech",
+  "projectType": "legacy_system"
+}
+
+# ============================================
+# 7. REGISTRAR FONTE
+# ============================================
+
+POST {{baseUrl}}/sources
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "projectId": "UUID_DO_PROJETO",
+  "name": "Repositório GitHub",
+  "sourceType": "repository",
+  "location": "https://github.com/empresa/erp-legado",
+  "authMode": "token_ref",
+  "credentialsRef": "github-token-vault-key"
+}
+
+# ============================================
+# 8. LISTAR AGENTES
+# ============================================
+
+GET {{baseUrl}}/agents
+Authorization: Bearer {{token}}
+
+# ============================================
+# 9. CRIAR RUN DE DISCOVERY
+# ============================================
+
+POST {{baseUrl}}/runs
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "projectId": "UUID_DO_PROJETO",
+  "sourceId": "UUID_DA_FONTE",
+  "runType": "discovery",
+  "title": "Discovery inicial do ERP",
+  "goal": "Mapear módulos, rotas, APIs e schema do sistema legado",
+  "scopeText": "Focar primeiro no módulo financeiro"
+}
+
+# ============================================
+# 10. ATUALIZAR STATUS DA RUN
+# ============================================
+
+PATCH {{baseUrl}}/runs/UUID_DA_RUN/status
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "status": "running"
+}
+
+# ============================================
+# 11. CRIAR AGENT RUN
+# ============================================
+
+POST {{baseUrl}}/agent-runs
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "runId": "UUID_DA_RUN",
+  "agentId": "UUID_DO_AGENTE_ARCHITECT",
+  "inputSummary": "Analisar estrutura de pastas e módulos do repositório"
+}
+
+# ============================================
+# 12. REGISTRAR EVIDÊNCIA
+# ============================================
+
+POST {{baseUrl}}/evidence-registry
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "projectId": "UUID_DO_PROJETO",
+  "runId": "UUID_DA_RUN",
+  "sourceId": "UUID_DA_FONTE",
+  "evidenceType": "code_excerpt",
+  "title": "Controller de pagamentos encontrado",
+  "contentExcerpt": "class PaymentController extends BaseController { ... }",
+  "referencePath": "src/controllers/PaymentController.php",
+  "relatedEntityType": "modules_registry",
+  "relatedEntityId": "UUID_DO_MODULO",
+  "confidenceStatus": "inferred"
+}
+
+# ============================================
+# 13. CRIAR ITEM DE BACKLOG
+# ============================================
+
+POST {{baseUrl}}/backlog
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "projectId": "UUID_DO_PROJETO",
+  "runId": "UUID_DA_RUN",
+  "sourceType": "discovery",
+  "title": "API de pagamentos sem validação de input",
+  "description": "O endpoint POST /payments não valida campos obrigatórios como amount e currency. Isso pode causar erros em cascata no módulo financeiro.",
+  "backlogType": "bug",
+  "priority": "high"
+}
+
+# ============================================
+# 14. APROVAR BACKLOG ITEM (gate humano)
+# ============================================
+
+PATCH {{baseUrl}}/backlog/UUID_DO_BACKLOG/approve
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "approvedForTask": true
+}
+
+# ============================================
+# 15. CRIAR TASK A PARTIR DO BACKLOG
+# ============================================
+
+POST {{baseUrl}}/tasks/from-backlog
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "backlogItemId": "UUID_DO_BACKLOG_APROVADO"
+}
