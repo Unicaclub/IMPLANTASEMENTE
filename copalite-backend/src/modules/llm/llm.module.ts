@@ -38,6 +38,7 @@ import { RegistryPopulationService } from './registry-population.service';
 import { SourceIngestionService } from './source-ingestion.service';
 import { GitCloneService } from './git-clone.service';
 import { CodeReaderService } from './code-reader.service';
+import { PromptBuilderService } from './prompt-builder.service';
 
 // Dependent modules
 import { ComparisonsModule } from '../comparisons/comparisons.module';
@@ -88,6 +89,7 @@ import { BacklogItemEntity } from '../backlog/entities/backlog-item.entity';
     SourceIngestionService,
     GitCloneService,
     CodeReaderService,
+    PromptBuilderService,
   ],
   exports: [
     AgentExecutionService,
