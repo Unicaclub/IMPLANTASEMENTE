@@ -1,41 +1,45 @@
-# Copalite Platform v1.1.0
+# Copalite Platform
 
-Plataforma de software discovery, mapeamento tecnico e validacao usando 9 agentes de IA especializados.
+Plataforma de discovery, mapeamento e validacao de software usando 9 agentes AI especializados.
 
 ## Stack
+- Backend: NestJS 10 + TypeORM + PostgreSQL 15
+- Frontend: Next.js 14 + Tailwind CSS
+- AI: Multi-provider (Anthropic Claude, OpenAI GPT, Google Gemini, Ollama)
 
-- **Backend:** NestJS 10, TypeORM, PostgreSQL 15
-- **Frontend:** Next.js 14, Tailwind CSS, Lucide React, Recharts
-- **Infra:** Docker Compose
+## Quick Start (Development)
 
-## Estrutura
+```bash
+cd copalite-backend
+docker compose up -d
+npm install && cp .env.example .env && npm run build && npm run start:dev
 
+cd copalite-frontend
+npm install && npm run dev
 ```
-copalite-backend/    # API REST (porta 3000)
-copalite-frontend/   # UI (porta 3001)
+
+## Production Deploy
+
+```bash
+cp .env.production.example .env
+# Editar .env com senhas reais e API keys
+docker compose -f docker-compose.prod.yml up -d --build
 ```
 
-## v1.1 Highlights
+## Documentation
+- [Release Notes](copalite-backend/RELEASE_NOTES_V1.md)
+- [Known Limitations](copalite-backend/KNOWN_LIMITATIONS.md)
+- [Local Runbook](copalite-backend/RUNBOOK_LOCAL.md)
 
-- Refresh token hardening + error boundaries
-- Paginacao robusta + testes automatizados (4 testes, 2 suites)
-- Activity history e notificacoes automaticas
-- Health check endpoint (`GET /health`)
-- Request logging + global exception filter
-- Type safety cleanup (zero `as any` em codigo de dominio)
+## Releases
 
-## Quick Start
-
-Ver [RUNBOOK_LOCAL.md](copalite-backend/RUNBOOK_LOCAL.md)
-
-## Changelog
-
-Ver [CHANGELOG.md](CHANGELOG.md)
-
-## Release Notes
-
-Ver [RELEASE_NOTES_V1.md](copalite-backend/RELEASE_NOTES_V1.md)
-
-## Limitacoes Conhecidas
-
-Ver [KNOWN_LIMITATIONS.md](copalite-backend/KNOWN_LIMITATIONS.md)
+| Tag | Versao |
+|-----|--------|
+| v1.0.0 | Plataforma base |
+| v1.1.0 | Hardening |
+| v1.2.0 | Agentes AI multi-provider |
+| v1.3.0 | Agentes populam registries |
+| v1.4.0 | UX completa |
+| v1.5.0 | Pipelines completos |
+| v1.6.0 | Observabilidade |
+| v2.0.0 | Production-ready |
