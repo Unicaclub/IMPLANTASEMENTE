@@ -36,6 +36,8 @@ import { OutputParserService } from './output-parser.service';
 import { PipelineHandlerService } from './pipeline-handler.service';
 import { RegistryPopulationService } from './registry-population.service';
 import { SourceIngestionService } from './source-ingestion.service';
+import { GitCloneService } from './git-clone.service';
+import { CodeReaderService } from './code-reader.service';
 
 // Dependent modules
 import { ComparisonsModule } from '../comparisons/comparisons.module';
@@ -84,6 +86,8 @@ import { BacklogItemEntity } from '../backlog/entities/backlog-item.entity';
     PipelineHandlerService,
     RegistryPopulationService,
     SourceIngestionService,
+    GitCloneService,
+    CodeReaderService,
   ],
   exports: [
     AgentExecutionService,

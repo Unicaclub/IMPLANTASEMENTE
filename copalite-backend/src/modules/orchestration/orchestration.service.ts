@@ -15,6 +15,7 @@ import { RunEntity } from '../runs/entities/run.entity';
 
 // LLM Agent Execution
 import { AgentExecutionService } from '../llm/agent-execution.service';
+import { SourceIngestionService } from '../llm/source-ingestion.service';
 
 // Enums
 import {
@@ -53,6 +54,7 @@ export class OrchestrationService {
     private readonly dataSource: DataSource,
     private readonly notificationsService: NotificationsService,
     private readonly agentExecutionService: AgentExecutionService,
+    private readonly sourceIngestionService: SourceIngestionService,
     private readonly configService: ConfigService,
   ) {}
 
@@ -263,6 +265,9 @@ export class OrchestrationService {
             `Pipeline failed: ${run.title} — step "${currentStep.stepName}"`,
           );
 
+          // Cleanup cloned repos
+          this.sourceIngestionService.cleanup(run.projectId);
+
           return {
             completedStep: currentStep,
             completedAgentRun: currentAgentRun,
@@ -299,6 +304,9 @@ export class OrchestrationService {
           'pipeline_completed',
           `Pipeline completed: ${run.title}`,
         );
+
+        // Cleanup cloned repos
+        this.sourceIngestionService.cleanup(run.projectId);
 
         return {
           completedStep: currentStep,
