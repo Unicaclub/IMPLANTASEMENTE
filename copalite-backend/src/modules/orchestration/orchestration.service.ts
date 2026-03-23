@@ -186,25 +186,37 @@ export class OrchestrationService {
         throw new BadRequestException('No active step found for this run');
       }
 
-      // Find the current agent run
-      const currentAgentRun = await queryRunner.manager.findOne(AgentRunEntity, {
+      // Find the current agent run (running, or just completed/failed by auto-execute)
+      let currentAgentRun = await queryRunner.manager.findOne(AgentRunEntity, {
         where: { runId, status: RunStatus.RUNNING },
         order: { createdAt: 'DESC' },
       });
+      if (!currentAgentRun) {
+        // Auto-execute may have already completed/failed the agent run
+        currentAgentRun = await queryRunner.manager.findOne(AgentRunEntity, {
+          where: [
+            { runId, status: RunStatus.COMPLETED },
+            { runId, status: RunStatus.FAILED },
+          ],
+          order: { finishedAt: 'DESC' },
+        });
+      }
       if (!currentAgentRun) {
         throw new BadRequestException('No active agent run found');
       }
 
       const success = dto.success !== false;
 
-      // Complete the current agent run
-      currentAgentRun.status = success ? RunStatus.COMPLETED : RunStatus.FAILED;
-      currentAgentRun.outputSummary = dto.outputSummary;
-      currentAgentRun.finishedAt = new Date();
-      currentAgentRun.confidenceLevel = success
-        ? ConfidenceStatus.INFERRED
-        : ConfidenceStatus.UNVALIDATED;
-      await queryRunner.manager.save(currentAgentRun);
+      // Complete the current agent run (skip if already completed by auto-execute)
+      if (currentAgentRun.status === RunStatus.RUNNING) {
+        currentAgentRun.status = success ? RunStatus.COMPLETED : RunStatus.FAILED;
+        currentAgentRun.outputSummary = dto.outputSummary;
+        currentAgentRun.finishedAt = new Date();
+        currentAgentRun.confidenceLevel = success
+          ? ConfidenceStatus.INFERRED
+          : ConfidenceStatus.UNVALIDATED;
+        await queryRunner.manager.save(currentAgentRun);
+      }
 
       // Save agent output if provided
       if (dto.structuredData || dto.outputSummary) {
@@ -550,7 +562,17 @@ export class OrchestrationService {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       this.logger.error(`executeAndAdvance failed for agentRun ${agentRunId}: ${msg}`);
-      // Don't re-throw — this runs fire-and-forget
+      // Try to advance the step as failed so the pipeline doesn't get stuck
+      try {
+        await this.advanceStep(runId, {
+          outputSummary: `Auto-execute error: ${msg.substring(0, 500)}`,
+          success: false,
+          errorMessage: msg,
+        });
+      } catch (advanceErr: unknown) {
+        const advMsg = advanceErr instanceof Error ? advanceErr.message : String(advanceErr);
+        this.logger.error(`Failed to advance step after error: ${advMsg}`);
+      }
     }
   }
 
