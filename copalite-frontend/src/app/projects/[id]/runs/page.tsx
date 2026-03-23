@@ -14,6 +14,7 @@ export default function RunsPage() {
   const [runs, setRuns] = useState<any[]>([]);
   const [expandedRun, setExpandedRun] = useState<string | null>(null);
   const [steps, setSteps] = useState<Record<string, any[]>>({});
+  const [runDetails, setRunDetails] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -36,9 +37,15 @@ export default function RunsPage() {
   const toggleRun = async (runId: string) => {
     if (expandedRun === runId) { setExpandedRun(null); return; }
     setExpandedRun(runId);
-    if (!steps[runId]) {
-      const s = await api.getRunSteps(runId);
-      setSteps(prev => ({ ...prev, [runId]: s }));
+    try {
+      const [s, status] = await Promise.all([
+        steps[runId] ? Promise.resolve(steps[runId]) : api.getRunSteps(runId),
+        runDetails[runId] ? Promise.resolve(runDetails[runId]) : api.getPipelineStatus(runId),
+      ]);
+      if (!steps[runId]) setSteps(prev => ({ ...prev, [runId]: s }));
+      if (!runDetails[runId]) setRunDetails(prev => ({ ...prev, [runId]: status }));
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -100,6 +107,27 @@ export default function RunsPage() {
                   {expandedRun === run.id && (
                     <div className="px-5 pb-5 border-t border-coal-800/60">
                       <p className="text-sm text-coal-400 py-3">{run.goal}</p>
+
+                      {/* Run summary info */}
+                      {runDetails[run.id] && (
+                        <div className="grid grid-cols-3 gap-3 mb-4">
+                          <div className="bg-coal-800/40 rounded-lg p-3">
+                            <p className="text-[10px] text-coal-500 uppercase tracking-wider">Progress</p>
+                            <p className="text-sm font-bold text-coal-200 mt-1">
+                              {runDetails[run.id].progress?.completed ?? 0} / {runDetails[run.id].progress?.total ?? 0} steps
+                            </p>
+                          </div>
+                          <div className="bg-coal-800/40 rounded-lg p-3">
+                            <p className="text-[10px] text-coal-500 uppercase tracking-wider">Type</p>
+                            <p className="text-sm font-bold text-coal-200 mt-1">{run.runType?.replace(/_/g, ' ')}</p>
+                          </div>
+                          <div className="bg-coal-800/40 rounded-lg p-3">
+                            <p className="text-[10px] text-coal-500 uppercase tracking-wider">Status</p>
+                            <p className="text-sm font-bold text-coal-200 mt-1">{run.status}</p>
+                          </div>
+                        </div>
+                      )}
+
                       {steps[run.id] ? (
                         <div className="space-y-1">
                           {steps[run.id].map((step: any) => (
@@ -110,6 +138,7 @@ export default function RunsPage() {
                               {step.status === 'failed' && <XCircle size={14} className="text-rose-400" />}
                               {step.status === 'pending' && <Clock size={14} className="text-coal-600" />}
                               <span className="text-sm text-coal-300 flex-1">{step.stepName}</span>
+                              {step.notes && <span className="text-[11px] text-coal-500 max-w-[200px] truncate">{step.notes}</span>}
                               <StatusBadge status={step.status} />
                             </div>
                           ))}

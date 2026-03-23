@@ -24,6 +24,11 @@ export default function DashboardPage() {
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // New project modal
+  const [showProjectModal, setShowProjectModal] = useState(false);
+  const [prjForm, setPrjForm] = useState({ name: '', slug: '', projectType: 'legacy_system', description: '' });
+  const [creatingProject, setCreatingProject] = useState(false);
+
   useEffect(() => {
     loadWorkspaces();
   }, []);
@@ -77,6 +82,35 @@ export default function DashboardPage() {
       name,
       slug: name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
     });
+  }
+
+  function handleProjectNameChange(name: string) {
+    setPrjForm({
+      ...prjForm,
+      name,
+      slug: name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
+    });
+  }
+
+  async function handleCreateProject() {
+    if (!prjForm.name || !prjForm.slug || !selectedWs) return;
+    setCreatingProject(true);
+    try {
+      await api.createProject({
+        workspaceId: selectedWs,
+        name: prjForm.name,
+        slug: prjForm.slug,
+        projectType: prjForm.projectType,
+        description: prjForm.description || undefined,
+      });
+      setShowProjectModal(false);
+      setPrjForm({ name: '', slug: '', projectType: 'legacy_system', description: '' });
+      await selectWorkspace(selectedWs);
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setCreatingProject(false);
+    }
   }
 
   const selectedWorkspace = workspaces.find(ws => ws.id === selectedWs);
@@ -190,6 +224,12 @@ export default function DashboardPage() {
                     )}
                     <span className="badge-neutral ml-2">{projects.length}</span>
                   </div>
+                  {selectedWs && (
+                    <button onClick={() => setShowProjectModal(true)} className="btn-primary gap-2 text-sm">
+                      <Plus size={14} />
+                      New Project
+                    </button>
+                  )}
                 </div>
 
                 {loadingProjects ? (
@@ -278,6 +318,75 @@ export default function DashboardPage() {
                 >
                   {creating ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
                   {creating ? 'Creating...' : 'Create'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        {/* Create Project Modal */}
+        {showProjectModal && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="card w-full max-w-md p-6 animate-slide-up">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-lg font-bold text-coal-50">Create Project</h2>
+                <button onClick={() => setShowProjectModal(false)} className="text-coal-500 hover:text-coal-300">
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-coal-300 mb-1.5">Name</label>
+                  <input
+                    className="input-field"
+                    placeholder="e.g. ERP System"
+                    value={prjForm.name}
+                    onChange={(e) => handleProjectNameChange(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-coal-300 mb-1.5">Slug</label>
+                  <input
+                    className="input-field font-mono"
+                    placeholder="e.g. erp-system"
+                    value={prjForm.slug}
+                    onChange={(e) => setPrjForm({ ...prjForm, slug: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-coal-300 mb-1.5">Project Type</label>
+                  <select
+                    className="input-field"
+                    value={prjForm.projectType}
+                    onChange={(e) => setPrjForm({ ...prjForm, projectType: e.target.value })}
+                  >
+                    {['legacy_system', 'web_application', 'api_service', 'mobile_application', 'microservices', 'monolith', 'data_platform', 'other'].map((t) => (
+                      <option key={t} value={t}>{t.replace(/_/g, ' ')}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-coal-300 mb-1.5">Description</label>
+                  <textarea
+                    className="input-field min-h-[80px] resize-none"
+                    placeholder="Brief description of the project"
+                    value={prjForm.description}
+                    onChange={(e) => setPrjForm({ ...prjForm, description: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 mt-6">
+                <button onClick={() => setShowProjectModal(false)} className="btn-secondary flex-1">
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCreateProject}
+                  disabled={!prjForm.name || !prjForm.slug || creatingProject}
+                  className="btn-primary flex-1 gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {creatingProject ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
+                  {creatingProject ? 'Creating...' : 'Create'}
                 </button>
               </div>
             </div>

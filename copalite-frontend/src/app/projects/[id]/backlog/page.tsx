@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation';
 import {
   ListChecks, CheckCircle2, XCircle, Clock, AlertTriangle,
   ArrowRight, Filter, ChevronDown, ShieldCheck, Bug, Lightbulb,
-  FileText, Wrench, Search as SearchIcon, Loader2, RotateCw
+  FileText, Wrench, Search as SearchIcon, Loader2, RotateCw, Plus, X
 } from 'lucide-react';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
@@ -47,6 +47,11 @@ export default function BacklogPage() {
   const [search, setSearch] = useState('');
   const [processing, setProcessing] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showModal, setShowModal] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [itemForm, setItemForm] = useState({
+    title: '', description: '', backlogType: 'bug', priority: 'medium', sourceType: 'manual',
+  });
 
   useEffect(() => {
     loadBacklog();
@@ -73,6 +78,29 @@ export default function BacklogPage() {
       alert(err.message);
     } finally {
       setProcessing(null);
+    }
+  }
+
+  async function handleCreateItem() {
+    if (!itemForm.title || itemForm.description.length < 10) return;
+    setCreating(true);
+    try {
+      await api.post('/backlog', {
+        projectId,
+        title: itemForm.title,
+        description: itemForm.description,
+        backlogType: itemForm.backlogType,
+        priority: itemForm.priority,
+        sourceType: itemForm.sourceType,
+      });
+      setShowModal(false);
+      setItemForm({ title: '', description: '', backlogType: 'bug', priority: 'medium', sourceType: 'manual' });
+      setLoading(true);
+      await loadBacklog();
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setCreating(false);
     }
   }
 
@@ -114,6 +142,12 @@ export default function BacklogPage() {
         <Header
           title="Backlog"
           subtitle="Triage and approve items before they become tasks"
+          actions={
+            <button onClick={() => setShowModal(true)} className="btn-primary gap-2">
+              <Plus size={16} />
+              New Item
+            </button>
+          }
         />
 
         <div className="p-8 space-y-6">
@@ -288,6 +322,92 @@ export default function BacklogPage() {
             </div>
           )}
         </div>
+        {/* Create Backlog Item Modal */}
+        {showModal && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="card w-full max-w-lg p-6 animate-slide-up">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-lg font-bold text-coal-50">New Backlog Item</h2>
+                <button onClick={() => setShowModal(false)} className="text-coal-500 hover:text-coal-300">
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-coal-300 mb-1.5">Title</label>
+                  <input
+                    className="input-field"
+                    placeholder="e.g. Missing auth middleware on /users"
+                    value={itemForm.title}
+                    onChange={(e) => setItemForm({ ...itemForm, title: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-coal-300 mb-1.5">
+                    Description <span className="text-coal-500">(min 10 chars)</span>
+                  </label>
+                  <textarea
+                    className="input-field min-h-[80px] resize-none"
+                    placeholder="Describe the issue or improvement..."
+                    value={itemForm.description}
+                    onChange={(e) => setItemForm({ ...itemForm, description: e.target.value })}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-coal-300 mb-1.5">Type</label>
+                    <select
+                      className="input-field"
+                      value={itemForm.backlogType}
+                      onChange={(e) => setItemForm({ ...itemForm, backlogType: e.target.value })}
+                    >
+                      {['bug', 'gap', 'improvement', 'documentation', 'refactor', 'validation'].map((t) => (
+                        <option key={t} value={t}>{t}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-coal-300 mb-1.5">Priority</label>
+                    <select
+                      className="input-field"
+                      value={itemForm.priority}
+                      onChange={(e) => setItemForm({ ...itemForm, priority: e.target.value })}
+                    >
+                      {['critical', 'high', 'medium', 'low'].map((p) => (
+                        <option key={p} value={p}>{p}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-coal-300 mb-1.5">Source Type</label>
+                  <select
+                    className="input-field"
+                    value={itemForm.sourceType}
+                    onChange={(e) => setItemForm({ ...itemForm, sourceType: e.target.value })}
+                  >
+                    {['discovery', 'comparison', 'audit', 'manual'].map((s) => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 mt-6">
+                <button onClick={() => setShowModal(false)} className="btn-secondary flex-1">Cancel</button>
+                <button
+                  onClick={handleCreateItem}
+                  disabled={!itemForm.title || itemForm.description.length < 10 || creating}
+                  className="btn-primary flex-1 gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {creating ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
+                  {creating ? 'Creating...' : 'Create Item'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );

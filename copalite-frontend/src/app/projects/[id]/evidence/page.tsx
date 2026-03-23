@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import {
   FileSearch, Code2, FileText, Globe, Camera, Terminal, StickyNote,
-  Loader2, Filter, ExternalLink, AlertTriangle, RotateCw
+  Loader2, Filter, ExternalLink, AlertTriangle, RotateCw, Plus, X
 } from 'lucide-react';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
@@ -34,6 +34,11 @@ export default function EvidencePage() {
   const [loading, setLoading] = useState(true);
   const [typeFilter, setTypeFilter] = useState('all');
   const [error, setError] = useState<string | null>(null);
+  const [showModal, setShowModal] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [evForm, setEvForm] = useState({
+    title: '', evidenceType: 'code_excerpt', contentExcerpt: '', referencePath: '', sourceLine: '',
+  });
 
   useEffect(() => {
     loadData();
@@ -51,13 +56,47 @@ export default function EvidencePage() {
     }
   }
 
+  async function handleCreateEvidence() {
+    if (!evForm.title || !evForm.contentExcerpt) return;
+    setCreating(true);
+    try {
+      await api.post('/evidence-registry', {
+        projectId,
+        runId: '00000000-0000-0000-0000-000000000000', // placeholder - evidence created manually
+        evidenceType: evForm.evidenceType,
+        title: evForm.title,
+        contentExcerpt: evForm.contentExcerpt,
+        referencePath: evForm.referencePath || undefined,
+        relatedEntityType: 'project',
+        relatedEntityId: projectId,
+      });
+      setShowModal(false);
+      setEvForm({ title: '', evidenceType: 'code_excerpt', contentExcerpt: '', referencePath: '', sourceLine: '' });
+      setLoading(true);
+      await loadData();
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setCreating(false);
+    }
+  }
+
   const filtered = typeFilter === 'all' ? evidence : evidence.filter(e => e.evidenceType === typeFilter);
 
   return (
     <div className="flex min-h-screen">
       <Sidebar projectId={projectId} />
       <main className="flex-1 ml-[260px]">
-        <Header title="Evidence Registry" subtitle={`${evidence.length} pieces of evidence collected`} />
+        <Header
+          title="Evidence Registry"
+          subtitle={`${evidence.length} pieces of evidence collected`}
+          actions={
+            <button onClick={() => setShowModal(true)} className="btn-primary gap-2">
+              <Plus size={16} />
+              Add Evidence
+            </button>
+          }
+        />
         <div className="p-8 space-y-6">
           <div className="flex items-center gap-2 flex-wrap">
             {['all', 'code_excerpt', 'document_excerpt', 'observed_route', 'api_trace', 'manual_note'].map((f) => (
@@ -131,6 +170,85 @@ export default function EvidencePage() {
             </div>
           )}
         </div>
+        {/* Add Evidence Modal */}
+        {showModal && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="card w-full max-w-lg p-6 animate-slide-up">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-lg font-bold text-coal-50">Add Evidence</h2>
+                <button onClick={() => setShowModal(false)} className="text-coal-500 hover:text-coal-300">
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-coal-300 mb-1.5">Title</label>
+                  <input
+                    className="input-field"
+                    placeholder="e.g. Auth middleware code"
+                    value={evForm.title}
+                    onChange={(e) => setEvForm({ ...evForm, title: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-coal-300 mb-1.5">Evidence Type</label>
+                  <select
+                    className="input-field"
+                    value={evForm.evidenceType}
+                    onChange={(e) => setEvForm({ ...evForm, evidenceType: e.target.value })}
+                  >
+                    {['code_excerpt', 'document_excerpt', 'observed_route', 'screenshot_note', 'api_trace', 'manual_note'].map((t) => (
+                      <option key={t} value={t}>{t.replace(/_/g, ' ')}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-coal-300 mb-1.5">Content</label>
+                  <textarea
+                    className="input-field min-h-[100px] resize-none font-mono text-xs"
+                    placeholder="Paste the code snippet, log output, or notes..."
+                    value={evForm.contentExcerpt}
+                    onChange={(e) => setEvForm({ ...evForm, contentExcerpt: e.target.value })}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-coal-300 mb-1.5">Source File</label>
+                    <input
+                      className="input-field font-mono text-xs"
+                      placeholder="e.g. src/auth/guard.ts"
+                      value={evForm.referencePath}
+                      onChange={(e) => setEvForm({ ...evForm, referencePath: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-coal-300 mb-1.5">Source Line</label>
+                    <input
+                      className="input-field font-mono text-xs"
+                      type="number"
+                      placeholder="e.g. 42"
+                      value={evForm.sourceLine}
+                      onChange={(e) => setEvForm({ ...evForm, sourceLine: e.target.value })}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 mt-6">
+                <button onClick={() => setShowModal(false)} className="btn-secondary flex-1">Cancel</button>
+                <button
+                  onClick={handleCreateEvidence}
+                  disabled={!evForm.title || !evForm.contentExcerpt || creating}
+                  className="btn-primary flex-1 gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {creating ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
+                  {creating ? 'Adding...' : 'Add Evidence'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );
