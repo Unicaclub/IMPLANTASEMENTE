@@ -1,11 +1,13 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, FolderKanban, Database, Play, GitBranch,
   FileSearch, ListChecks, CheckSquare, Shield, Settings,
-  LogOut, Boxes, Globe, Code2, Layers, MonitorSmartphone, Activity, Bot, Bell
+  LogOut, Boxes, Globe, Code2, Layers, MonitorSmartphone, Activity, Bot, Bell,
+  Menu, X
 } from 'lucide-react';
 import clsx from 'clsx';
 import { api } from '@/lib/api';
@@ -17,6 +19,7 @@ interface SidebarProps {
 
 export default function Sidebar({ projectId, projectName }: SidebarProps) {
   const pathname = usePathname();
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   const isActive = (path: string) => pathname === path || pathname?.startsWith(path + '/');
 
@@ -46,19 +49,20 @@ export default function Sidebar({ projectId, projectName }: SidebarProps) {
     { label: 'Agents', href: `/projects/${projectId}/agents`, icon: Bot },
   ] : [];
 
-  return (
-    <aside className="fixed left-0 top-0 bottom-0 w-[260px] bg-coal-950 border-r border-coal-800/60 flex flex-col z-40">
+  const sidebarContent = (
+    <>
       {/* Logo */}
-      <div className="h-16 flex items-center px-5 border-b border-coal-800/60">
+      <div className="h-16 flex items-center justify-between px-5 border-b border-coal-800/60">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center">
             <Shield className="w-4.5 h-4.5 text-white" size={18} />
           </div>
-          <span className="text-lg font-bold tracking-tight text-coal-100">
-            Copalite
-          </span>
-          <span className="badge-info text-[10px] ml-1">v1.1</span>
+          <span className="text-lg font-bold tracking-tight text-coal-100">Copalite</span>
+          <span className="badge-info text-[10px] ml-1">v2.2</span>
         </div>
+        <button onClick={() => setMobileOpen(false)} className="md:hidden text-coal-400 hover:text-coal-200">
+          <X size={20} />
+        </button>
       </div>
 
       {/* Main nav */}
@@ -67,6 +71,7 @@ export default function Sidebar({ projectId, projectName }: SidebarProps) {
           <Link
             key={item.href}
             href={item.href}
+            onClick={() => setMobileOpen(false)}
             className={clsx(
               'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150',
               isActive(item.href)
@@ -79,27 +84,17 @@ export default function Sidebar({ projectId, projectName }: SidebarProps) {
           </Link>
         ))}
 
-        {/* Project section */}
         {projectId && (
           <>
             <div className="pt-4 pb-2 px-3">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-coal-500">
-                Project
-              </p>
-              {projectName && (
-                <p className="text-sm font-medium text-coal-200 mt-0.5 truncate">
-                  {projectName}
-                </p>
-              )}
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-coal-500">Project</p>
+              {projectName && <p className="text-sm font-medium text-coal-200 mt-0.5 truncate">{projectName}</p>}
             </div>
-
             {projectNav.map((item: any, i) => {
               if (item.divider) {
                 return (
                   <div key={`div-${i}`} className="pt-4 pb-1 px-3">
-                    <p className="text-[10px] font-semibold uppercase tracking-widest text-coal-600">
-                      {item.label}
-                    </p>
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-coal-600">{item.label}</p>
                   </div>
                 );
               }
@@ -107,6 +102,7 @@ export default function Sidebar({ projectId, projectName }: SidebarProps) {
                 <Link
                   key={item.href}
                   href={item.href}
+                  onClick={() => setMobileOpen(false)}
                   className={clsx(
                     'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150',
                     isActive(item.href)
@@ -125,24 +121,42 @@ export default function Sidebar({ projectId, projectName }: SidebarProps) {
 
       {/* Bottom */}
       <div className="p-3 border-t border-coal-800/60 space-y-1">
-        <Link
-          href="/settings"
-          className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-coal-500 hover:text-coal-300 hover:bg-coal-800/60 transition-all"
-        >
-          <Settings size={16} />
-          Settings
+        <Link href="/settings" onClick={() => setMobileOpen(false)}
+          className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-coal-500 hover:text-coal-300 hover:bg-coal-800/60 transition-all">
+          <Settings size={16} /> Settings
         </Link>
         <button
-          onClick={async () => {
-            await api.logout();
-            window.location.href = '/auth/login';
-          }}
-          className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-coal-500 hover:text-rose-400 hover:bg-rose-500/10 transition-all w-full"
-        >
-          <LogOut size={16} />
-          Logout
+          onClick={async () => { await api.logout(); window.location.href = '/auth/login'; }}
+          className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-coal-500 hover:text-rose-400 hover:bg-rose-500/10 transition-all w-full">
+          <LogOut size={16} /> Logout
         </button>
       </div>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {/* Mobile hamburger button */}
+      <button
+        onClick={() => setMobileOpen(true)}
+        className="fixed top-4 left-4 z-50 md:hidden p-2 rounded-lg bg-coal-900 border border-coal-800 text-coal-300 hover:text-coal-100"
+      >
+        <Menu size={20} />
+      </button>
+
+      {/* Mobile overlay */}
+      {mobileOpen && (
+        <div className="fixed inset-0 bg-black/60 z-40 md:hidden" onClick={() => setMobileOpen(false)} />
+      )}
+
+      {/* Sidebar — desktop: fixed, mobile: slide-in */}
+      <aside className={clsx(
+        'fixed left-0 top-0 bottom-0 w-[260px] bg-coal-950 border-r border-coal-800/60 flex flex-col z-50 transition-transform duration-300',
+        'md:translate-x-0',
+        mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+      )}>
+        {sidebarContent}
+      </aside>
+    </>
   );
 }
