@@ -35,8 +35,9 @@ import { UiRegistryModule } from './modules/ui-registry/ui-registry.module';
 import { CodebaseMapModule } from './modules/codebase-map/codebase-map.module';
 import { EvidenceRegistryModule } from './modules/evidence-registry/evidence-registry.module';
 
-// Modules - Phase 4b: Orchestration Engine
+// Modules - Phase 4b: Orchestration Engine & LLM
 import { OrchestrationModule } from './modules/orchestration/orchestration.module';
+import { LlmModule } from './modules/llm/llm.module';
 
 // Modules - Phase 4c: Dashboard
 import { DashboardModule } from './modules/dashboard/dashboard.module';
@@ -100,6 +101,7 @@ import { ActivityHistoryModule } from './modules/activity-history/activity-histo
 
     // Phase 4b
     OrchestrationModule,
+    LlmModule,
     DashboardModule,
 
     // Phase 5

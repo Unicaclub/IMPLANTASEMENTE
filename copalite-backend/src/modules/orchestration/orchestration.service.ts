@@ -14,7 +14,14 @@ import { AgentEntity } from '../agents/entities/agent.entity';
 import { AgentRunEntity } from '../agent-runs/entities/agent-run.entity';
 import { AgentOutputEntity } from '../agent-outputs/entities/agent-output.entity';
 import { LogEntity } from '../logs/entities/log.entity';
+import { AuditEntity } from '../audits/entities/audit.entity';
+import { ReportEntity } from '../reports/entities/report.entity';
+import { BacklogItemEntity } from '../backlog/entities/backlog-item.entity';
+import { ModuleRegistryEntity } from '../modules-registry/entities/module-registry.entity';
+import { ApiRegistryEntity } from '../api-registry/entities/api-registry.entity';
 import { NotificationsService } from '../notifications/notifications.service';
+import { ComparisonEngineService } from '../llm/comparison-engine.service';
+import { PipelineHandlerService } from '../llm/pipeline-handler.service';
 
 // Enums
 import {
@@ -55,8 +62,20 @@ export class OrchestrationService {
     private readonly agentOutputRepo: Repository<AgentOutputEntity>,
     @InjectRepository(LogEntity)
     private readonly logRepo: Repository<LogEntity>,
+    @InjectRepository(AuditEntity)
+    private readonly auditRepo: Repository<AuditEntity>,
+    @InjectRepository(ReportEntity)
+    private readonly reportRepo: Repository<ReportEntity>,
+    @InjectRepository(BacklogItemEntity)
+    private readonly backlogRepo: Repository<BacklogItemEntity>,
+    @InjectRepository(ModuleRegistryEntity)
+    private readonly moduleRepo: Repository<ModuleRegistryEntity>,
+    @InjectRepository(ApiRegistryEntity)
+    private readonly apiRegistryRepo: Repository<ApiRegistryEntity>,
     private readonly dataSource: DataSource,
     private readonly notificationsService: NotificationsService,
+    private readonly comparisonEngine: ComparisonEngineService,
+    private readonly pipelineHandler: PipelineHandlerService,
   ) {}
 
   // =========================================
@@ -247,6 +266,9 @@ export class OrchestrationService {
         await this.log(run.projectId, runId, null, LogLevel.INFO,
           `Pipeline completed successfully: ${run.title}`,
         );
+
+        // Execute pipeline-specific hooks (comparison, audit, backlog generation)
+        await this.executePipelineHooks(run);
 
         this.notifyPipeline(run.projectId, null, 'pipeline_completed', `Pipeline completed: ${run.title}`);
 
@@ -523,6 +545,71 @@ export class OrchestrationService {
       await this.logRepo.save(log);
     } catch (err) {
       this.logger.error(`Failed to save log: ${message}`, err);
+    }
+  }
+
+  /**
+   * Execute pipeline-specific logic when a run completes.
+   * - Comparison: runs comparison engine on registries
+   * - Audit: generates audit findings + report
+   * - Backlog Generation: generates backlog items (all pending approval)
+   */
+  private async executePipelineHooks(run: RunEntity): Promise<void> {
+    try {
+      switch (run.runType) {
+        case RunType.COMPARISON: {
+          // Find previous completed run of same project for comparison
+          const previousRun = await this.runRepo.findOne({
+            where: {
+              projectId: run.projectId,
+              status: RunStatus.COMPLETED,
+            },
+            order: { finishedAt: 'DESC' },
+          });
+
+          if (previousRun && previousRun.id !== run.id) {
+            const result = await this.comparisonEngine.compareRuns(
+              run.projectId, previousRun.id, run.id, run.id,
+            );
+            await this.log(run.projectId, run.id, null, LogLevel.INFO,
+              `Comparison engine: ${result.diffs.length} diffs found`,
+            );
+          } else {
+            await this.log(run.projectId, run.id, null, LogLevel.INFO,
+              'Comparison: no previous run found, LLM-only analysis',
+            );
+          }
+          break;
+        }
+
+        case RunType.AUDIT: {
+          const auditResult = await this.pipelineHandler.executeAuditPipeline(
+            run.projectId, run.id,
+            this.auditRepo, this.reportRepo,
+            this.moduleRepo, this.apiRegistryRepo,
+          );
+          await this.log(run.projectId, run.id, null, LogLevel.INFO,
+            `Audit pipeline: ${auditResult.findingsCount} findings, report generated`,
+          );
+          break;
+        }
+
+        case RunType.BACKLOG_GENERATION: {
+          const bgResult = await this.pipelineHandler.executeBacklogGeneration(
+            run.projectId, run.id,
+            this.auditRepo, this.backlogRepo,
+          );
+          await this.log(run.projectId, run.id, null, LogLevel.INFO,
+            `Backlog generation: ${bgResult.itemsGenerated} items generated, all pending approval`,
+          );
+          break;
+        }
+      }
+    } catch (err) {
+      this.logger.error(`Pipeline hook error for run ${run.id}: ${err}`);
+      await this.log(run.projectId, run.id, null, LogLevel.ERROR,
+        `Pipeline hook error: ${err}`,
+      );
     }
   }
 
