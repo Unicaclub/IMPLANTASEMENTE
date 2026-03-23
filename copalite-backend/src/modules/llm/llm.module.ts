@@ -30,13 +30,24 @@ import { OpenaiProvider } from './providers/openai.provider';
 
 // Factory & Execution
 import { AgentExecutionService } from './agent-execution.service';
+import { ComparisonEngineService } from './comparison-engine.service';
 import { LlmProviderFactory } from './llm-provider.factory';
 import { OutputParserService } from './output-parser.service';
+import { PipelineHandlerService } from './pipeline-handler.service';
 import { RegistryPopulationService } from './registry-population.service';
 import { SourceIngestionService } from './source-ingestion.service';
 
+// Dependent modules
+import { ComparisonsModule } from '../comparisons/comparisons.module';
+
+// Action entities for pipeline handler
+import { AuditEntity } from '../audits/entities/audit.entity';
+import { ReportEntity } from '../reports/entities/report.entity';
+import { BacklogItemEntity } from '../backlog/entities/backlog-item.entity';
+
 @Module({
   imports: [
+    ComparisonsModule,
     TypeOrmModule.forFeature([
       AgentEntity,
       AgentRunEntity,
@@ -55,6 +66,10 @@ import { SourceIngestionService } from './source-ingestion.service';
       UiRegistryEntity,
       // Source entity
       SourceEntity,
+      // Action entities
+      AuditEntity,
+      ReportEntity,
+      BacklogItemEntity,
     ]),
   ],
   providers: [
@@ -64,14 +79,18 @@ import { SourceIngestionService } from './source-ingestion.service';
     OllamaProvider,
     LlmProviderFactory,
     AgentExecutionService,
+    ComparisonEngineService,
     OutputParserService,
+    PipelineHandlerService,
     RegistryPopulationService,
     SourceIngestionService,
   ],
   exports: [
     AgentExecutionService,
+    ComparisonEngineService,
     LlmProviderFactory,
     OutputParserService,
+    PipelineHandlerService,
     RegistryPopulationService,
     SourceIngestionService,
   ],
