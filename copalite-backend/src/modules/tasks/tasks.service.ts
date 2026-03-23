@@ -1,17 +1,22 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { TaskEntity } from './entities/task.entity';
 import { BacklogItemEntity } from '../backlog/entities/backlog-item.entity';
 import { CreateTaskFromBacklogDto, UpdateTaskDto } from './dto';
 import { BacklogStatus } from '../../common/enums';
 import { PaginationQueryDto, PaginatedResponseDto, getPaginationSkipTake } from '../../common/pipes/pagination';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class TasksService {
+  private readonly logger = new Logger(TasksService.name);
+
   constructor(
     @InjectRepository(TaskEntity) private readonly taskRepo: Repository<TaskEntity>,
     @InjectRepository(BacklogItemEntity) private readonly backlogRepo: Repository<BacklogItemEntity>,
+    private readonly notificationsService: NotificationsService,
+    private readonly dataSource: DataSource,
   ) {}
 
   async createFromBacklog(dto: CreateTaskFromBacklogDto) {
@@ -36,6 +41,9 @@ export class TasksService {
 
     backlogItem.status = BacklogStatus.PLANNED;
     await this.backlogRepo.save(backlogItem);
+
+    // Notify about task creation
+    this.notifyProject(saved.projectId, 'task_created', `Task created: ${saved.title}`);
 
     return saved;
   }
@@ -66,5 +74,18 @@ export class TasksService {
     const t = await this.findById(id);
     Object.assign(t, dto);
     return this.taskRepo.save(t);
+  }
+
+  private notifyProject(projectId: string, type: string, message: string) {
+    this.dataSource.getRepository('projects').findOne({
+      where: { id: projectId },
+      select: ['workspaceId'],
+    }).then((project: any) => {
+      if (project?.workspaceId) {
+        this.notificationsService.notify(project.workspaceId, type, message, message);
+      }
+    }).catch((err: any) => {
+      this.logger.warn(`Failed to send notification: ${err.message}`);
+    });
   }
 }

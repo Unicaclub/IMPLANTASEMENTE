@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, FolderKanban, Database, Play, GitBranch,
   FileSearch, ListChecks, CheckSquare, Shield, Settings,
-  LogOut, Boxes, Globe, Code2, Layers, MonitorSmartphone
+  LogOut, Boxes, Globe, Code2, Layers, MonitorSmartphone, Bell
 } from 'lucide-react';
 import clsx from 'clsx';
 import { api } from '@/lib/api';
@@ -23,6 +23,7 @@ export default function Sidebar({ projectId, projectName }: SidebarProps) {
   const mainNav = [
     { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
     { label: 'Workspaces', href: '/workspaces', icon: Boxes },
+    { label: 'Notifications', href: '/notifications', icon: Bell },
   ];
 
   const projectNav = projectId ? [

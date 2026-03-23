@@ -2,12 +2,16 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { SystemHealthEntity } from './entities/system-health.entity';
+import { AgentEntity } from '../agents/entities/agent.entity';
+import { RunEntity } from '../runs/entities/run.entity';
 import { CreateHealthCheckDto } from './dto';
 
 @Injectable()
 export class SystemHealthService {
   constructor(
     @InjectRepository(SystemHealthEntity) private readonly repo: Repository<SystemHealthEntity>,
+    @InjectRepository(AgentEntity) private readonly agentRepo: Repository<AgentEntity>,
+    @InjectRepository(RunEntity) private readonly runRepo: Repository<RunEntity>,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -16,7 +20,7 @@ export class SystemHealthService {
 
   async liveCheck() {
     const startTime = Date.now();
-    let dbStatus = 'ok';
+    let dbConnected = true;
     let dbLatencyMs = 0;
 
     try {
@@ -24,17 +28,46 @@ export class SystemHealthService {
       await this.dataSource.query('SELECT 1');
       dbLatencyMs = Date.now() - dbStart;
     } catch {
-      dbStatus = 'error';
+      dbConnected = false;
     }
 
     const mem = process.memoryUsage();
 
+    // Agents stats
+    let agentsTotal = 0;
+    let agentsActive = 0;
+    try {
+      agentsTotal = await this.agentRepo.count();
+      agentsActive = await this.agentRepo.count({ where: { status: 'active' as any } });
+    } catch { /* ignore */ }
+
+    // Last run
+    let lastRun: any = null;
+    try {
+      const run = await this.runRepo.findOne({
+        order: { createdAt: 'DESC' },
+        select: ['id', 'title', 'status', 'runType', 'createdAt', 'finishedAt'],
+      });
+      if (run) {
+        lastRun = {
+          id: run.id,
+          title: run.title,
+          status: run.status,
+          runType: run.runType,
+          createdAt: run.createdAt,
+          finishedAt: run.finishedAt,
+        };
+      }
+    } catch { /* ignore */ }
+
+    const overallStatus = !dbConnected ? 'unhealthy' : dbLatencyMs > 500 ? 'degraded' : 'healthy';
+
     return {
-      status: dbStatus === 'ok' ? 'healthy' : 'degraded',
+      status: overallStatus,
       timestamp: new Date().toISOString(),
       uptime: Math.floor(process.uptime()),
       database: {
-        status: dbStatus,
+        connected: dbConnected,
         latencyMs: dbLatencyMs,
       },
       memory: {
@@ -42,6 +75,11 @@ export class SystemHealthService {
         heapUsed: Math.round(mem.heapUsed / 1024 / 1024),
         heapTotal: Math.round(mem.heapTotal / 1024 / 1024),
       },
+      agents: {
+        total: agentsTotal,
+        active: agentsActive,
+      },
+      lastRun,
       responseMs: Date.now() - startTime,
     };
   }
