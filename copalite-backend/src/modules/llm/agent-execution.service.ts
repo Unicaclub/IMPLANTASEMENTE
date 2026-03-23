@@ -6,6 +6,7 @@ import { AgentOutputEntity } from '../agent-outputs/entities/agent-output.entity
 import { AgentRunEntity } from '../agent-runs/entities/agent-run.entity';
 import { AgentEntity } from '../agents/entities/agent.entity';
 import { LogEntity } from '../logs/entities/log.entity';
+import { PromptEntity } from '../prompts/entities/prompt.entity';
 import { RunStepEntity } from '../runs/entities/run-step.entity';
 import { RunEntity } from '../runs/entities/run.entity';
 
@@ -14,13 +15,14 @@ import {
   LogLevel,
   OutputType,
   RunStatus,
+  StatusBase,
   ValidationStatus,
 } from '../../common/enums';
 
+import { LlmMessage } from './interfaces';
 import { LlmProviderFactory } from './llm-provider.factory';
 import { OutputParserService } from './output-parser.service';
-import { PromptBuilderService } from './prompt-builder.service';
-import { RegistryPopulationService, PopulationContext } from './registry-population.service';
+import { PopulationContext, RegistryPopulationService } from './registry-population.service';
 import { SourceIngestionService } from './source-ingestion.service';
 
 @Injectable()
@@ -36,13 +38,14 @@ export class AgentExecutionService {
     private readonly agentOutputRepo: Repository<AgentOutputEntity>,
     @InjectRepository(LogEntity)
     private readonly logRepo: Repository<LogEntity>,
+    @InjectRepository(PromptEntity)
+    private readonly promptRepo: Repository<PromptEntity>,
     @InjectRepository(RunEntity)
     private readonly runRepo: Repository<RunEntity>,
     @InjectRepository(RunStepEntity)
     private readonly stepRepo: Repository<RunStepEntity>,
     private readonly llmFactory: LlmProviderFactory,
     private readonly outputParser: OutputParserService,
-    private readonly promptBuilder: PromptBuilderService,
     private readonly registryPopulation: RegistryPopulationService,
     private readonly sourceIngestion: SourceIngestionService,
   ) {}
@@ -80,9 +83,9 @@ export class AgentExecutionService {
     );
 
     try {
-      // 1. Build messages (with source context via prompt builder)
+      // 1. Build messages (with source context)
       const sourceContext = await this.sourceIngestion.getContext(run.projectId);
-      const messages = await this.promptBuilder.buildMessages(agent, run, currentStep, agentRun, sourceContext);
+      const messages = await this.buildMessages(agent, run, currentStep, agentRun, sourceContext);
 
       // 2. Call LLM
       const llmResponse = await this.llmFactory.chat(messages, agent.config);
@@ -119,7 +122,10 @@ export class AgentExecutionService {
             agentRunId: agentRun.id,
             agentType: agent.agentType,
           };
-          const populated = await this.registryPopulation.populate(popCtx, parseResult.data as Record<string, unknown>);
+          const populated = await this.registryPopulation.populate(
+            popCtx,
+            parseResult.data as Record<string, unknown>,
+          );
           this.logger.log(`Registry populated: ${populated} entries for ${agent.agentType}`);
         } catch (popErr: unknown) {
           const popMsg = popErr instanceof Error ? popErr.message : String(popErr);
@@ -166,6 +172,74 @@ export class AgentExecutionService {
 
       return agentRun;
     }
+  }
+
+  /**
+   * Build the message array for the LLM call.
+   */
+  private async buildMessages(
+    agent: AgentEntity,
+    run: RunEntity,
+    step: RunStepEntity | null,
+    agentRun: AgentRunEntity,
+    sourceContext?: string,
+  ): Promise<LlmMessage[]> {
+    const messages: LlmMessage[] = [];
+
+    // System prompt: prefer agent.systemPrompt, then prompts table, then default
+    const prompt = await this.promptRepo.findOne({
+      where: { agentId: agent.id, status: StatusBase.ACTIVE },
+      order: { version: 'DESC' },
+    });
+
+    const systemPrompt =
+      agent.systemPrompt || prompt?.contentMarkdown || this.getDefaultSystemPrompt(agent);
+    messages.push({ role: 'system', content: systemPrompt });
+
+    // User message with context
+    const userContent = [
+      `## Task Context`,
+      `- **Run Type**: ${run.runType}`,
+      `- **Run Goal**: ${run.goal}`,
+      step ? `- **Current Step**: Step ${step.stepOrder} — ${step.stepName}` : '',
+      step ? `- **Step Type**: ${step.stepType}` : '',
+      agentRun.inputSummary ? `- **Input Summary**: ${agentRun.inputSummary}` : '',
+      '',
+      `## Instructions`,
+      `Execute your role as the **${agent.name}** agent.`,
+      agent.description ? `Agent description: ${agent.description}` : '',
+      '',
+      `Provide your output in Markdown format with structured sections.`,
+      `Include a summary section at the end.`,
+      sourceContext ? '' : '',
+      sourceContext || '',
+    ]
+      .filter(Boolean)
+      .join('\n');
+
+    messages.push({ role: 'user', content: userContent });
+
+    return messages;
+  }
+
+  /**
+   * Default system prompt when no prompt template is configured.
+   */
+  private getDefaultSystemPrompt(agent: AgentEntity): string {
+    return [
+      `You are the ${agent.name} agent in the Copalite platform.`,
+      `Your agent type is: ${agent.agentType}.`,
+      agent.description ? `Your role: ${agent.description}` : '',
+      '',
+      'Follow these rules:',
+      '1. Analyze the provided context carefully.',
+      '2. Execute your specific role within the pipeline.',
+      '3. Output structured Markdown with clear sections.',
+      '4. Include a "## Summary" section at the end.',
+      '5. Be precise, technical, and actionable.',
+    ]
+      .filter(Boolean)
+      .join('\n');
   }
 
   private async log(
