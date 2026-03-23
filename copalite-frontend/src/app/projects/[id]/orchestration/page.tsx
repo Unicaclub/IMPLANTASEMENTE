@@ -348,7 +348,17 @@ export default function OrchestrationPage() {
                                   <div className="flex items-center gap-4 mt-2 text-[11px] text-coal-500">
                                     <span>Started: {new Date(step.startedAt).toLocaleTimeString()}</span>
                                     {step.finishedAt && (
-                                      <span>Finished: {new Date(step.finishedAt).toLocaleTimeString()}</span>
+                                      <>
+                                        <span>Finished: {new Date(step.finishedAt).toLocaleTimeString()}</span>
+                                        <span className="text-emerald-400 font-medium">
+                                          {((new Date(step.finishedAt).getTime() - new Date(step.startedAt).getTime()) / 1000).toFixed(1)}s
+                                        </span>
+                                      </>
+                                    )}
+                                    {isCurrent && !step.finishedAt && (
+                                      <span className="text-sky-400 font-medium animate-pulse">
+                                        {((Date.now() - new Date(step.startedAt).getTime()) / 1000).toFixed(0)}s elapsed
+                                      </span>
                                     )}
                                   </div>
                                 )}

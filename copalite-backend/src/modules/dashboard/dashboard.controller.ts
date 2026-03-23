@@ -15,4 +15,10 @@ export class DashboardController {
   async getProjectDashboard(@Param('projectId', ParseUUIDPipe) projectId: string) {
     return this.dashboardService.getProjectDashboard(projectId);
   }
+
+  @Get('project/:projectId/export')
+  @ApiOperation({ summary: 'Export full project report with all registries and metrics' })
+  async exportReport(@Param('projectId', ParseUUIDPipe) projectId: string) {
+    return this.dashboardService.exportReport(projectId);
+  }
 }

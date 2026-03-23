@@ -408,6 +408,9 @@ class ApiClient {
   getProjectDashboard(projectId: string) {
     return this.get<any>(`/dashboard/project/${projectId}`);
   }
+  exportProjectReport(projectId: string) {
+    return this.get<any>(`/dashboard/project/${projectId}/export`);
+  }
 
   // === NOTIFICATIONS ===
   listNotifications(workspaceId: string) {

@@ -31,6 +31,27 @@ export class DashboardService {
     @InjectRepository(TaskEntity) private readonly taskRepo: Repository<TaskEntity>,
   ) {}
 
+  async exportReport(projectId: string) {
+    const dashboard = await this.getProjectDashboard(projectId);
+
+    const [modules, routes, apis, schemas, uiScreens, evidence, backlog] = await Promise.all([
+      this.moduleRepo.find({ where: { projectId }, order: { name: 'ASC' } }),
+      this.routeRepo.find({ where: { projectId }, order: { path: 'ASC' } }),
+      this.apiRepo.find({ where: { projectId }, order: { path: 'ASC' } }),
+      this.schemaRepo.find({ where: { projectId }, order: { entityName: 'ASC' } }),
+      this.uiRepo.find({ where: { projectId }, order: { screenName: 'ASC' } }),
+      this.evidenceRepo.find({ where: { projectId }, order: { title: 'ASC' } }),
+      this.backlogRepo.find({ where: { projectId }, order: { priority: 'ASC' } }),
+    ]);
+
+    return {
+      exportedAt: new Date().toISOString(),
+      dashboard,
+      registries: { modules, routes, apis, schemas, uiScreens, evidence },
+      backlog,
+    };
+  }
+
   async getProjectDashboard(projectId: string) {
     const project = await this.projectRepo.findOne({ where: { id: projectId } });
     if (!project) throw new NotFoundException('Project not found');

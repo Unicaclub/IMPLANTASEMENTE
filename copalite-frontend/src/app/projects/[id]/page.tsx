@@ -6,7 +6,7 @@ import Link from 'next/link';
 import {
   Database, Play, Layers, Globe, Code2, MonitorSmartphone,
   FileSearch, ListChecks, CheckSquare, ArrowRight, TrendingUp,
-  Activity, Loader2, Clock, CheckCircle2, XCircle, AlertTriangle, Zap
+  Activity, Loader2, Clock, CheckCircle2, XCircle, AlertTriangle, Zap, Download
 } from 'lucide-react';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
@@ -53,6 +53,19 @@ export default function ProjectDetailPage() {
   if (loading) return (
     <div className="flex min-h-screen"><Sidebar projectId={projectId} /><main className="flex-1 ml-[260px] flex items-center justify-center"><Loader2 className="animate-spin text-coal-500" size={32} /></main></div>
   );
+  async function handleExport() {
+    try {
+      const report = await api.exportProjectReport(projectId);
+      const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `copalite-report-${projectId.slice(0, 8)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) { console.error('Export failed:', err); }
+  }
+
   if (!dashboard) return null;
   const d = dashboard;
 
@@ -61,7 +74,7 @@ export default function ProjectDetailPage() {
       <Sidebar projectId={projectId} projectName={d.project.name} />
       <main className="flex-1 ml-[260px]">
         <Header title={d.project.name} subtitle={`${d.project.projectType} · ${d.project.status}`}
-          actions={<Link href={`/projects/${projectId}/orchestration`} className="btn-primary gap-2"><Zap size={16} /> Start Run</Link>} />
+          actions={<div className="flex items-center gap-2"><button onClick={handleExport} className="btn-secondary gap-2"><Download size={16} /> Export</button><Link href={`/projects/${projectId}/orchestration`} className="btn-primary gap-2"><Zap size={16} /> Start Run</Link></div>} />
         <div className="p-8 space-y-8">
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
             <MetricCard icon={Database} label="Sources" value={d.sources.total} color="bg-sky-500/10 text-sky-400" href={`/projects/${projectId}/sources`} />

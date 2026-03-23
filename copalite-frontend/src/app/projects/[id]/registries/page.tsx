@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import {
   Layers, Globe, Code2, Database, MonitorSmartphone, Loader2, Search,
-  AlertTriangle, RotateCw
+  AlertTriangle, RotateCw, FileSearch, ChevronDown, ChevronRight, Shield, Lock
 } from 'lucide-react';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
@@ -16,14 +16,23 @@ const TABS = [
   { key: 'apis', label: 'APIs', icon: Code2, color: 'text-emerald-400' },
   { key: 'schemas', label: 'Schemas', icon: Database, color: 'text-amber-400' },
   { key: 'ui', label: 'UI Screens', icon: MonitorSmartphone, color: 'text-rose-400' },
+  { key: 'evidence', label: 'Evidence', icon: FileSearch, color: 'text-teal-400' },
 ];
 
 const CONFIDENCE_BADGE: Record<string, string> = {
-  confirmed: 'badge-success',
-  inferred: 'badge-info',
-  divergent: 'badge-warning',
-  unvalidated: 'badge-neutral',
-  outdated: 'badge-danger',
+  confirmed: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
+  inferred: 'bg-sky-500/15 text-sky-400 border-sky-500/30',
+  divergent: 'bg-amber-500/15 text-amber-400 border-amber-500/30',
+  unvalidated: 'bg-coal-700/40 text-coal-400 border-coal-700',
+  outdated: 'bg-rose-500/15 text-rose-400 border-rose-500/30',
+};
+
+const METHOD_COLORS: Record<string, string> = {
+  GET: 'bg-emerald-500/15 text-emerald-400',
+  POST: 'bg-sky-500/15 text-sky-400',
+  PUT: 'bg-amber-500/15 text-amber-400',
+  PATCH: 'bg-violet-500/15 text-violet-400',
+  DELETE: 'bg-rose-500/15 text-rose-400',
 };
 
 export default function RegistriesPage() {
@@ -37,14 +46,14 @@ export default function RegistriesPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
-  useEffect(() => {
-    loadTab(activeTab);
-  }, [activeTab, projectId]);
+  useEffect(() => { loadTab(activeTab); }, [activeTab, projectId]);
 
   async function loadTab(tab: string) {
     setLoading(true);
     setError(null);
+    setExpanded(new Set());
     try {
       let result: any[] = [];
       switch (tab) {
@@ -53,10 +62,10 @@ export default function RegistriesPage() {
         case 'apis': result = await api.listApis(projectId); break;
         case 'schemas': result = await api.listSchemas(projectId); break;
         case 'ui': result = await api.listUiScreens(projectId); break;
+        case 'evidence': result = await api.listEvidence(projectId); break;
       }
       setData(result);
     } catch (err: any) {
-      console.error(err);
       setError(err.message || 'Failed to load data');
     } finally {
       setLoading(false);
@@ -66,36 +75,227 @@ export default function RegistriesPage() {
   const filtered = data.filter(item => {
     if (!search) return true;
     const s = search.toLowerCase();
-    return (item.name || item.entityName || item.screenName || '').toLowerCase().includes(s) ||
-           (item.path || item.description || '').toLowerCase().includes(s);
+    return JSON.stringify(item).toLowerCase().includes(s);
   });
 
-  function renderItem(item: any) {
-    const name = item.name || item.entityName || item.screenName || 'Unnamed';
-    const desc = item.description || item.path || item.tableName || '';
-    const confidence = item.confidenceStatus;
+  function toggleExpand(id: string) {
+    setExpanded(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
 
+  function renderModulesTable() {
     return (
-      <div key={item.id} className="card p-4 animate-fade-in">
-        <div className="flex items-start justify-between">
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <h4 className="text-sm font-semibold text-coal-100 truncate">{name}</h4>
-              {item.slug && <span className="text-[10px] text-coal-500 font-mono">{item.slug}</span>}
-            </div>
-            {desc && <p className="text-xs text-coal-400 mt-1 truncate">{desc}</p>}
-            <div className="flex items-center gap-2 mt-2">
-              {item.layerType && <span className="badge-neutral text-[10px]">{item.layerType}</span>}
-              {item.routeType && <span className="badge-neutral text-[10px]">{item.routeType}</span>}
-              {item.httpMethod && <span className="badge-info text-[10px]">{item.httpMethod}</span>}
-              {item.stateType && <span className="badge-neutral text-[10px]">{item.stateType}</span>}
-              {confidence && <span className={`badge text-[10px] ${CONFIDENCE_BADGE[confidence] || 'badge-neutral'}`}>{confidence}</span>}
-            </div>
-          </div>
-          {item.method && <span className="badge-info text-[10px] font-mono flex-shrink-0">{item.method}</span>}
-        </div>
-      </div>
+      <table className="w-full">
+        <thead>
+          <tr className="border-b border-coal-800 text-left">
+            <th className="text-xs text-coal-500 font-medium py-3 px-4">Name</th>
+            <th className="text-xs text-coal-500 font-medium py-3 px-4">Layer</th>
+            <th className="text-xs text-coal-500 font-medium py-3 px-4">Description</th>
+            <th className="text-xs text-coal-500 font-medium py-3 px-4">Confidence</th>
+          </tr>
+        </thead>
+        <tbody>
+          {filtered.map(item => (
+            <tr key={item.id} className="border-b border-coal-800/50 hover:bg-coal-800/30 cursor-pointer" onClick={() => toggleExpand(item.id)}>
+              <td className="py-3 px-4">
+                <div className="flex items-center gap-2">
+                  {expanded.has(item.id) ? <ChevronDown size={14} className="text-coal-500" /> : <ChevronRight size={14} className="text-coal-500" />}
+                  <span className="text-sm font-medium text-coal-100">{item.name || item.entityName}</span>
+                </div>
+                {expanded.has(item.id) && item.slug && <p className="text-[11px] text-coal-500 font-mono mt-1 ml-6">{item.slug}</p>}
+              </td>
+              <td className="py-3 px-4">
+                {item.layerType && <span className="badge-neutral text-[10px]">{item.layerType}</span>}
+              </td>
+              <td className="py-3 px-4">
+                <p className="text-xs text-coal-400 line-clamp-1">{item.description || '-'}</p>
+              </td>
+              <td className="py-3 px-4">
+                {item.confidenceStatus && (
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full border ${CONFIDENCE_BADGE[item.confidenceStatus] || CONFIDENCE_BADGE.unvalidated}`}>
+                    {item.confidenceStatus}
+                  </span>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     );
+  }
+
+  function renderApisTable() {
+    return (
+      <table className="w-full">
+        <thead>
+          <tr className="border-b border-coal-800 text-left">
+            <th className="text-xs text-coal-500 font-medium py-3 px-4">Method</th>
+            <th className="text-xs text-coal-500 font-medium py-3 px-4">Path</th>
+            <th className="text-xs text-coal-500 font-medium py-3 px-4">Description</th>
+            <th className="text-xs text-coal-500 font-medium py-3 px-4">Auth</th>
+          </tr>
+        </thead>
+        <tbody>
+          {filtered.map(item => (
+            <tr key={item.id} className="border-b border-coal-800/50 hover:bg-coal-800/30">
+              <td className="py-3 px-4">
+                <span className={`text-[11px] font-mono font-bold px-2 py-0.5 rounded ${METHOD_COLORS[item.httpMethod || item.method] || 'bg-coal-700 text-coal-300'}`}>
+                  {item.httpMethod || item.method || '?'}
+                </span>
+              </td>
+              <td className="py-3 px-4">
+                <span className="text-sm font-mono text-coal-200">{item.path || item.endpoint || '-'}</span>
+              </td>
+              <td className="py-3 px-4">
+                <p className="text-xs text-coal-400 line-clamp-1">{item.description || '-'}</p>
+              </td>
+              <td className="py-3 px-4">
+                {item.authRequired && <Lock size={14} className="text-amber-400" />}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    );
+  }
+
+  function renderRoutesTable() {
+    return (
+      <table className="w-full">
+        <thead>
+          <tr className="border-b border-coal-800 text-left">
+            <th className="text-xs text-coal-500 font-medium py-3 px-4">Path</th>
+            <th className="text-xs text-coal-500 font-medium py-3 px-4">Type</th>
+            <th className="text-xs text-coal-500 font-medium py-3 px-4">Method</th>
+            <th className="text-xs text-coal-500 font-medium py-3 px-4">Controller</th>
+          </tr>
+        </thead>
+        <tbody>
+          {filtered.map(item => (
+            <tr key={item.id} className="border-b border-coal-800/50 hover:bg-coal-800/30">
+              <td className="py-3 px-4"><span className="text-sm font-mono text-coal-200">{item.path || '-'}</span></td>
+              <td className="py-3 px-4">{item.routeType && <span className="badge-neutral text-[10px]">{item.routeType}</span>}</td>
+              <td className="py-3 px-4">
+                {item.method && <span className={`text-[11px] font-mono font-bold px-2 py-0.5 rounded ${METHOD_COLORS[item.method] || 'bg-coal-700 text-coal-300'}`}>{item.method}</span>}
+              </td>
+              <td className="py-3 px-4"><span className="text-xs text-coal-400">{item.controllerName || '-'}</span></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    );
+  }
+
+  function renderSchemasTable() {
+    return (
+      <table className="w-full">
+        <thead>
+          <tr className="border-b border-coal-800 text-left">
+            <th className="text-xs text-coal-500 font-medium py-3 px-4">Entity</th>
+            <th className="text-xs text-coal-500 font-medium py-3 px-4">Table</th>
+            <th className="text-xs text-coal-500 font-medium py-3 px-4">Description</th>
+            <th className="text-xs text-coal-500 font-medium py-3 px-4">Confidence</th>
+          </tr>
+        </thead>
+        <tbody>
+          {filtered.map(item => (
+            <tr key={item.id} className="border-b border-coal-800/50 hover:bg-coal-800/30 cursor-pointer" onClick={() => toggleExpand(item.id)}>
+              <td className="py-3 px-4">
+                <div className="flex items-center gap-2">
+                  {expanded.has(item.id) ? <ChevronDown size={14} className="text-coal-500" /> : <ChevronRight size={14} className="text-coal-500" />}
+                  <span className="text-sm font-medium text-coal-100">{item.entityName || item.name}</span>
+                </div>
+              </td>
+              <td className="py-3 px-4"><span className="text-sm font-mono text-coal-300">{item.tableName || '-'}</span></td>
+              <td className="py-3 px-4"><p className="text-xs text-coal-400 line-clamp-1">{item.description || '-'}</p></td>
+              <td className="py-3 px-4">
+                {item.confidenceStatus && (
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full border ${CONFIDENCE_BADGE[item.confidenceStatus] || CONFIDENCE_BADGE.unvalidated}`}>
+                    {item.confidenceStatus}
+                  </span>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    );
+  }
+
+  function renderUiTable() {
+    return (
+      <table className="w-full">
+        <thead>
+          <tr className="border-b border-coal-800 text-left">
+            <th className="text-xs text-coal-500 font-medium py-3 px-4">Screen</th>
+            <th className="text-xs text-coal-500 font-medium py-3 px-4">Route</th>
+            <th className="text-xs text-coal-500 font-medium py-3 px-4">State Type</th>
+            <th className="text-xs text-coal-500 font-medium py-3 px-4">Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          {filtered.map(item => (
+            <tr key={item.id} className="border-b border-coal-800/50 hover:bg-coal-800/30">
+              <td className="py-3 px-4"><span className="text-sm font-medium text-coal-100">{item.screenName || item.name}</span></td>
+              <td className="py-3 px-4"><span className="text-sm font-mono text-coal-300">{item.route || '-'}</span></td>
+              <td className="py-3 px-4">{item.stateType && <span className="badge-neutral text-[10px]">{item.stateType}</span>}</td>
+              <td className="py-3 px-4"><p className="text-xs text-coal-400 line-clamp-1">{item.description || '-'}</p></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    );
+  }
+
+  function renderEvidenceTable() {
+    return (
+      <table className="w-full">
+        <thead>
+          <tr className="border-b border-coal-800 text-left">
+            <th className="text-xs text-coal-500 font-medium py-3 px-4">Title</th>
+            <th className="text-xs text-coal-500 font-medium py-3 px-4">Type</th>
+            <th className="text-xs text-coal-500 font-medium py-3 px-4">Source File</th>
+          </tr>
+        </thead>
+        <tbody>
+          {filtered.map(item => (
+            <tr key={item.id} className="border-b border-coal-800/50 hover:bg-coal-800/30 cursor-pointer" onClick={() => toggleExpand(item.id)}>
+              <td className="py-3 px-4">
+                <div className="flex items-center gap-2">
+                  {expanded.has(item.id) ? <ChevronDown size={14} className="text-coal-500" /> : <ChevronRight size={14} className="text-coal-500" />}
+                  <span className="text-sm font-medium text-coal-100">{item.title || '-'}</span>
+                </div>
+                {expanded.has(item.id) && item.content && (
+                  <pre className="text-[11px] text-coal-400 mt-2 ml-6 bg-coal-900 p-2 rounded max-h-40 overflow-auto whitespace-pre-wrap">{item.content}</pre>
+                )}
+              </td>
+              <td className="py-3 px-4">
+                {item.evidenceType && <span className="badge-neutral text-[10px]">{item.evidenceType}</span>}
+              </td>
+              <td className="py-3 px-4">
+                <span className="text-xs font-mono text-coal-400">{item.sourceFile || '-'}</span>
+                {item.sourceLine && <span className="text-[10px] text-coal-500">:{item.sourceLine}</span>}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    );
+  }
+
+  function renderTable() {
+    switch (activeTab) {
+      case 'modules': return renderModulesTable();
+      case 'apis': return renderApisTable();
+      case 'routes': return renderRoutesTable();
+      case 'schemas': return renderSchemasTable();
+      case 'ui': return renderUiTable();
+      case 'evidence': return renderEvidenceTable();
+      default: return null;
+    }
   }
 
   return (
@@ -119,14 +319,15 @@ export default function RegistriesPage() {
             ))}
           </div>
 
-          {/* Search */}
-          <div className="relative max-w-sm">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-coal-500" />
-            <input className="input-field pl-9" placeholder={`Search ${activeTab}...`}
-              value={search} onChange={(e) => setSearch(e.target.value)} />
+          {/* Search + count */}
+          <div className="flex items-center justify-between">
+            <div className="relative max-w-sm">
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-coal-500" />
+              <input className="input-field pl-9" placeholder={`Search ${activeTab}...`}
+                value={search} onChange={(e) => setSearch(e.target.value)} />
+            </div>
+            <p className="text-xs text-coal-500">{filtered.length} item{filtered.length !== 1 ? 's' : ''}</p>
           </div>
-
-          <p className="text-xs text-coal-500">{filtered.length} item{filtered.length !== 1 ? 's' : ''}</p>
 
           {error && (
             <div className="card p-8 text-center border-rose-500/20">
@@ -147,7 +348,9 @@ export default function RegistriesPage() {
               <p className="text-xs text-coal-500 mt-1">Run a discovery pipeline to populate registries</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">{filtered.map(renderItem)}</div>
+            <div className="card overflow-hidden">
+              {renderTable()}
+            </div>
           )}
         </div>
       </main>
