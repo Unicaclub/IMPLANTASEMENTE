@@ -35,9 +35,8 @@ import { RouteRegistryModule } from './modules/route-registry/route-registry.mod
 import { SchemaRegistryModule } from './modules/schema-registry/schema-registry.module';
 import { UiRegistryModule } from './modules/ui-registry/ui-registry.module';
 
-// Modules - Phase 4b: Orchestration Engine & LLM
+// Modules - Phase 4b: Orchestration Engine
 import { OrchestrationModule } from './modules/orchestration/orchestration.module';
-import { LlmModule } from './modules/llm/llm.module';
 
 // Modules - Phase 4c: LLM Integration
 import { LlmModule } from './modules/llm/llm.module';
