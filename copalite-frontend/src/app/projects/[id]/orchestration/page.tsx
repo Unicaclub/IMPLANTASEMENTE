@@ -41,10 +41,35 @@ export default function OrchestrationPage() {
   const [startForm, setStartForm] = useState({ runType: 'discovery', title: '', goal: '', scopeText: '' });
   const [starting, setStarting] = useState(false);
   const { toast } = useToast();
+  const [autoRefreshing, setAutoRefreshing] = useState(false);
 
   useEffect(() => {
     loadData();
   }, [projectId]);
+
+  // Polling: auto-refresh when a run is running
+  useEffect(() => {
+    if (!selectedRun || selectedRun.status !== 'running') {
+      setAutoRefreshing(false);
+      return;
+    }
+    setAutoRefreshing(true);
+    const interval = setInterval(async () => {
+      try {
+        const status = await api.getPipelineStatus(selectedRun.id);
+        setPipelineStatus(status);
+        if (status.run?.status && status.run.status !== 'running') {
+          setAutoRefreshing(false);
+          setSelectedRun({ ...selectedRun, status: status.run.status });
+          const runsData = await api.listRuns(projectId);
+          setRuns(runsData);
+        }
+      } catch (err) {
+        console.error('Polling error:', err);
+      }
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [selectedRun?.id, selectedRun?.status]);
 
   async function loadData() {
     try {
@@ -237,6 +262,13 @@ export default function OrchestrationPage() {
                         )}
                       </div>
                     </div>
+
+                    {autoRefreshing && (
+                      <div className="flex items-center gap-2 mt-3">
+                        <Loader2 size={14} className="animate-spin text-sky-400" />
+                        <span className="text-xs text-sky-400 font-medium">Auto-refreshing...</span>
+                      </div>
+                    )}
 
                     {/* Progress bar */}
                     {pipelineStatus && (

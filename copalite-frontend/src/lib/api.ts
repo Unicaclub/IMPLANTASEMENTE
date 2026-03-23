@@ -409,6 +409,14 @@ class ApiClient {
     return this.get<any>(`/dashboard/project/${projectId}`);
   }
 
+  // === NOTIFICATIONS ===
+  listNotifications(workspaceId: string) {
+    return this.get<any[]>(`/notifications?workspaceId=${workspaceId}`);
+  }
+  markNotificationRead(id: string) {
+    return this.patch<any>(`/notifications/${id}/read`, {});
+  }
+
   // === SYSTEM HEALTH ===
   getSystemHealth() {
     return this.get<any>('/system-health/live');

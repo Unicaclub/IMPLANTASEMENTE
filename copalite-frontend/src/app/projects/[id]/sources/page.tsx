@@ -33,7 +33,7 @@ export default function SourcesPage() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [creating, setCreating] = useState(false);
-  const [form, setForm] = useState({ name: '', sourceType: 'repository', location: '' });
+  const [form, setForm] = useState({ name: '', sourceType: 'repository', location: '', authMode: 'none' });
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
@@ -58,7 +58,7 @@ export default function SourcesPage() {
     try {
       await api.createSource({ projectId, ...form });
       setShowModal(false);
-      setForm({ name: '', sourceType: 'repository', location: '' });
+      setForm({ name: '', sourceType: 'repository', location: '', authMode: 'none' });
       setLoading(true);
       await loadSources();
     } catch (err: any) {
@@ -184,6 +184,19 @@ export default function SourcesPage() {
                     value={form.location}
                     onChange={(e) => setForm({ ...form, location: e.target.value })}
                   />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-coal-300 mb-1.5">Auth Mode</label>
+                  <select
+                    className="input-field"
+                    value={form.authMode}
+                    onChange={(e) => setForm({ ...form, authMode: e.target.value })}
+                  >
+                    {['none', 'manual', 'session', 'oauth', 'token_ref'].map((m) => (
+                      <option key={m} value={m}>{m.replace(/_/g, ' ')}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
