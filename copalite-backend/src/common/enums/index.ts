@@ -296,3 +296,18 @@ export const SYSTEM_TYPES = [
   'other',
 ] as const;
 export type SystemType = (typeof SYSTEM_TYPES)[number];
+
+export enum JourneyStatus {
+  PENDING = 'pending',
+  RUNNING = 'running',
+  PASSED = 'passed',
+  FAILED = 'failed',
+  PARTIAL = 'partial',
+}
+
+export enum StepResultStatus {
+  PASSED = 'passed',
+  FAILED = 'failed',
+  PARTIAL = 'partial',
+  SKIPPED = 'skipped',
+}

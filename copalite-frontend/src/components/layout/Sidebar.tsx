@@ -52,6 +52,7 @@ export default function Sidebar({ projectId, projectName }: SidebarProps) {
     { label: 'Targets', href: `/projects/${projectId}/targets`, icon: Crosshair },
     { label: 'Browser Runs', href: `/projects/${projectId}/browser-runs`, icon: Monitor },
     { label: 'Run Diff', href: `/projects/${projectId}/browser-runs/diff`, icon: GitCompare },
+    { label: 'Jornadas', href: `/projects/${projectId}/journeys`, icon: Play },
     { divider: true, label: 'Intelligence' },
     { label: 'Agents', href: `/projects/${projectId}/agents`, icon: Bot },
     { label: 'Atividade', href: `/projects/${projectId}/activity`, icon: History },

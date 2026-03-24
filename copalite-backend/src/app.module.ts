@@ -54,6 +54,7 @@ import { BrowserEvidenceModule } from './modules/browser-evidence/browser-eviden
 import { BrowserProblemsModule } from './modules/browser-problems/browser-problems.module';
 import { BrowserRunsModule } from './modules/browser-runs/browser-runs.module';
 import { BrowserSpecsModule } from './modules/browser-specs/browser-specs.module';
+import { JourneysModule } from './modules/journeys/journeys.module';
 import { TargetSessionsModule } from './modules/target-sessions/target-sessions.module';
 import { TargetsModule } from './modules/targets/targets.module';
 
@@ -136,6 +137,7 @@ import { SystemHealthModule } from './modules/system-health/system-health.module
     BrowserEvidenceModule,
     BrowserProblemsModule,
     BrowserSpecsModule,
+    JourneysModule,
   ],
   providers: [
     // JWT guard global — all routes protected except @Public()

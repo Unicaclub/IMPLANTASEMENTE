@@ -481,6 +481,21 @@ class ApiClient {
     const payload = await this.get<any>(`/browser-specs/history/${runId}`);
     return Array.isArray(payload) ? payload : [];
   }
+
+  // === JOURNEYS ===
+  getAvailableJourneys() { return this.get<any>('/journeys/available'); }
+  executeJourney(slug: string, projectId: string, targetId: string) {
+    return this.post<any>(`/journeys/execute/${slug}?projectId=${projectId}&targetId=${targetId}`, {});
+  }
+  async listJourneys(projectId: string) {
+    const payload = await this.get<any>(`/journeys?projectId=${projectId}`);
+    return Array.isArray(payload) ? payload : [];
+  }
+  getJourneyRun(id: string) { return this.get<any>(`/journeys/${id}`); }
+  async getJourneySteps(id: string) {
+    const payload = await this.get<any>(`/journeys/${id}/steps`);
+    return Array.isArray(payload) ? payload : [];
+  }
 }
 
 export const api = new ApiClient();

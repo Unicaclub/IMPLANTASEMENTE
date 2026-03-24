@@ -1,6 +1,8 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { ProjectAccessGuard } from '../../common/guards/project-access.guard';
+import { BrowserRunsService } from '../browser-runs/browser-runs.service';
+import { TargetSessionsService } from '../target-sessions/target-sessions.service';
 import { TargetsService } from './targets.service';
 import { CreateTargetDto, UpdateTargetDto } from './dto';
 
@@ -9,7 +11,11 @@ import { CreateTargetDto, UpdateTargetDto } from './dto';
 @UseGuards(ProjectAccessGuard)
 @Controller('targets')
 export class TargetsController {
-  constructor(private readonly svc: TargetsService) {}
+  constructor(
+    private readonly svc: TargetsService,
+    private readonly runsSvc: BrowserRunsService,
+    private readonly sessionsSvc: TargetSessionsService,
+  ) {}
 
   @Post()
   async create(@Body() dto: CreateTargetDto) { return this.svc.create(dto); }
@@ -23,4 +29,12 @@ export class TargetsController {
 
   @Patch(':id')
   async update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateTargetDto) { return this.svc.update(id, dto); }
+
+  @Get(':id/browser-runs')
+  @ApiOperation({ summary: 'Browser runs deste target' })
+  async findBrowserRuns(@Param('id', ParseUUIDPipe) id: string) { return this.runsSvc.findByTarget(id); }
+
+  @Get(':id/sessions')
+  @ApiOperation({ summary: 'Sessions deste target' })
+  async findSessions(@Param('id', ParseUUIDPipe) id: string) { return this.sessionsSvc.findByTarget(id); }
 }

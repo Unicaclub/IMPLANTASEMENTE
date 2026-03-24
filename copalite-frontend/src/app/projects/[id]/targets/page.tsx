@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { Crosshair, Loader2, AlertTriangle, RotateCw, Plus, X } from 'lucide-react';
+import Link from 'next/link';
+import { Crosshair, Loader2, AlertTriangle, RotateCw, Plus, X, ArrowRight } from 'lucide-react';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import { useToast } from '@/components/shared/Toast';
@@ -70,7 +71,7 @@ export default function TargetsPage() {
           ) : (
             <div className="space-y-3">
               {targets.map((t) => (
-                <div key={t.id} className="card p-5 animate-fade-in">
+                <Link key={t.id} href={`/projects/${projectId}/targets/${t.id}`} className="card p-5 animate-fade-in block hover:border-coal-700 transition-all group">
                   <div className="flex items-center justify-between">
                     <div>
                       <div className="flex items-center gap-2 mb-1">
@@ -84,8 +85,9 @@ export default function TargetsPage() {
                         <span className="text-[10px] text-coal-600">{new Date(t.createdAt).toLocaleDateString('pt-BR')}</span>
                       </div>
                     </div>
+                    <ArrowRight size={16} className="text-coal-600 group-hover:text-emerald-400 transition-all" />
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           )}

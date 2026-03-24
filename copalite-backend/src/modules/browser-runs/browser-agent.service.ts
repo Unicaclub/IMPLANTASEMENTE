@@ -7,6 +7,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 import { BrowserRunStatus, EvidenceKind, ProblemSeverity, ProblemType, SessionStatus } from '../../common/enums';
+import { ExecutionLockService } from '../../common/utils/execution-lock.service';
 import { BrowserRunEntity } from './entities/browser-run.entity';
 import { BrowserEvidenceEntity } from '../browser-evidence/entities/browser-evidence.entity';
 import { BrowserProblemsService } from '../browser-problems/browser-problems.service';
@@ -74,9 +75,22 @@ export class BrowserAgentService {
     @InjectRepository(TargetEntity) private readonly targetRepo: Repository<TargetEntity>,
     @InjectRepository(TargetSessionEntity) private readonly sessionRepo: Repository<TargetSessionEntity>,
     private readonly problemsService: BrowserProblemsService,
+    private readonly lockService: ExecutionLockService,
   ) {}
 
   async execute(runId: string): Promise<ExecutionResult> {
+    const acquired = await this.lockService.tryAcquire(ExecutionLockService.BROWSER_AGENT_LOCK);
+    if (!acquired) {
+      throw new Error('Browser agent ja em execucao (lock distribuido). Aguarde.');
+    }
+    try {
+      return await this.executeInternal(runId);
+    } finally {
+      await this.lockService.release(ExecutionLockService.BROWSER_AGENT_LOCK);
+    }
+  }
+
+  private async executeInternal(runId: string): Promise<ExecutionResult> {
     const run = await this.runRepo.findOne({ where: { id: runId }, relations: ['target'] });
     if (!run) throw new NotFoundException('Browser run nao encontrada');
 

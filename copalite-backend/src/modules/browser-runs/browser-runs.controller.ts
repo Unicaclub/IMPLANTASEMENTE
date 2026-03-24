@@ -2,6 +2,7 @@ import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query, UseGua
 import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { ProjectAccessGuard } from '../../common/guards/project-access.guard';
 import { BrowserAgentService } from './browser-agent.service';
+import { BrowserEvidenceService } from '../browser-evidence/browser-evidence.service';
 import { BrowserRunsService } from './browser-runs.service';
 import { CreateBrowserRunDto, UpdateBrowserRunDto } from './dto';
 
@@ -13,6 +14,7 @@ export class BrowserRunsController {
   constructor(
     private readonly svc: BrowserRunsService,
     private readonly agent: BrowserAgentService,
+    private readonly evidenceSvc: BrowserEvidenceService,
   ) {}
 
   @Post()
@@ -35,6 +37,10 @@ export class BrowserRunsController {
 
   @Get(':id')
   async findById(@Param('id', ParseUUIDPipe) id: string) { return this.svc.findById(id); }
+
+  @Get(':id/evidences')
+  @ApiOperation({ summary: 'Listar evidencias de uma browser run' })
+  async findEvidences(@Param('id', ParseUUIDPipe) id: string) { return this.evidenceSvc.findByRun(id); }
 
   @Patch(':id')
   async update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateBrowserRunDto) { return this.svc.update(id, dto); }

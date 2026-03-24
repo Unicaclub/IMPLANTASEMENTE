@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { BrowserEvidenceEntity } from '../browser-evidence/entities/browser-evidence.entity';
+import { BrowserEvidenceModule } from '../browser-evidence/browser-evidence.module';
 import { BrowserProblemsModule } from '../browser-problems/browser-problems.module';
 import { TargetEntity } from '../targets/entities/target.entity';
 import { TargetSessionEntity } from '../target-sessions/entities/target-session.entity';
@@ -12,6 +13,7 @@ import { BrowserRunsService } from './browser-runs.service';
 @Module({
   imports: [
     TypeOrmModule.forFeature([BrowserRunEntity, BrowserEvidenceEntity, TargetEntity, TargetSessionEntity]),
+    BrowserEvidenceModule,
     BrowserProblemsModule,
   ],
   controllers: [BrowserRunsController],
