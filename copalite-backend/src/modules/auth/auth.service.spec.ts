@@ -13,9 +13,15 @@ describe('AuthService', () => {
   } as any;
 
   const configService = {
-    get: jest.fn().mockImplementation((key: string, fallback: string) => {
+    get: jest.fn().mockImplementation((key: string, fallback?: string) => {
       if (key === 'JWT_SECRET') return 'test-secret';
+      if (key === 'JWT_REFRESH_SECRET') return 'test-refresh-secret';
       return fallback;
+    }),
+    getOrThrow: jest.fn().mockImplementation((key: string) => {
+      if (key === 'JWT_SECRET') return 'test-secret';
+      if (key === 'JWT_REFRESH_SECRET') return 'test-refresh-secret';
+      throw new Error(`Missing env var: ${key}`);
     }),
   } as any;
 

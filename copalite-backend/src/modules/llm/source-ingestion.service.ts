@@ -45,6 +45,11 @@ export class SourceIngestionService {
     }
   }
 
+  /** Cleanup cloned/cached resources for a project (no-op for now) */
+  cleanup(_projectId: string): void {
+    // Future: clean up cloned repos, temp files, etc.
+  }
+
   constructor(
     @InjectRepository(SourceEntity)
     private readonly sourceRepo: Repository<SourceEntity>,

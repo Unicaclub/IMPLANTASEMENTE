@@ -17,6 +17,11 @@ import { RunEntity } from '../runs/entities/run.entity';
 import { AgentExecutionService } from '../llm/agent-execution.service';
 import { SourceIngestionService } from '../llm/source-ingestion.service';
 
+// Post-pipeline services
+import { BacklogService } from '../backlog/backlog.service';
+import { AuditsService } from '../audits/audits.service';
+import { ReportsService } from '../reports/reports.service';
+
 // Enums
 import {
   ConfidenceStatus,
@@ -56,6 +61,9 @@ export class OrchestrationService {
     private readonly agentExecutionService: AgentExecutionService,
     private readonly sourceIngestionService: SourceIngestionService,
     private readonly configService: ConfigService,
+    private readonly backlogService: BacklogService,
+    private readonly auditsService: AuditsService,
+    private readonly reportsService: ReportsService,
   ) {}
 
   private get autoExecute(): boolean {
@@ -260,9 +268,9 @@ export class OrchestrationService {
 
           this.notifyPipeline(
             run.projectId,
-            null,
-            'pipeline_failed',
-            `Pipeline failed: ${run.title} — step "${currentStep.stepName}"`,
+            run.createdByUserId,
+            'run_failed',
+            `Run falhou: ${run.title} encontrou um erro durante a execução`,
           );
 
           // Cleanup cloned repos
@@ -298,11 +306,17 @@ export class OrchestrationService {
           `Pipeline completed successfully: ${run.title}`,
         );
 
+        // Post-pipeline hooks: backlog, audit, report (fire-and-forget)
+        this.runPostPipelineHooks(run).catch((err) => {
+          this.logger.error(`Post-pipeline hooks failed: ${err.message}`);
+        });
+
+        // Notify run owner
         this.notifyPipeline(
           run.projectId,
-          null,
-          'pipeline_completed',
-          `Pipeline completed: ${run.title}`,
+          run.createdByUserId,
+          'run_completed',
+          `Run concluída: ${run.title} — backlog, auditoria e relatório disponíveis`,
         );
 
         // Cleanup cloned repos
@@ -544,6 +558,36 @@ export class OrchestrationService {
       result[runType] = { steps, totalSteps: steps.length };
     }
     return result;
+  }
+
+  // =========================================
+  // POST-PIPELINE HOOKS
+  // =========================================
+
+  private async runPostPipelineHooks(run: RunEntity): Promise<void> {
+    const runId = run.id;
+    const projectId = run.projectId;
+
+    try {
+      await this.backlogService.generateFromRun(runId, projectId);
+      await this.log(projectId, runId, null, LogLevel.INFO, 'Backlog gerado');
+    } catch (err) {
+      this.logger.warn(`Post-pipeline backlog generation failed: ${err}`);
+    }
+
+    try {
+      await this.auditsService.generateFromRun(runId, projectId);
+      await this.log(projectId, runId, null, LogLevel.INFO, 'Auditoria gerada');
+    } catch (err) {
+      this.logger.warn(`Post-pipeline audit generation failed: ${err}`);
+    }
+
+    try {
+      await this.reportsService.generateFromRun(runId, projectId);
+      await this.log(projectId, runId, null, LogLevel.INFO, 'Relatório gerado');
+    } catch (err) {
+      this.logger.warn(`Post-pipeline report generation failed: ${err}`);
+    }
   }
 
   // =========================================

@@ -11,6 +11,7 @@ import { RunStepEntity } from '../runs/entities/run-step.entity';
 import { RunEntity } from '../runs/entities/run.entity';
 
 import {
+  AgentType,
   ConfidenceStatus,
   LogLevel,
   OutputType,
@@ -197,6 +198,7 @@ export class AgentExecutionService {
     messages.push({ role: 'system', content: systemPrompt });
 
     // User message with context
+    const jsonOutputSchema = this.getJsonOutputSchema(agent.agentType);
     const userContent = [
       `## Task Context`,
       `- **Run Type**: ${run.runType}`,
@@ -209,9 +211,10 @@ export class AgentExecutionService {
       `Execute your role as the **${agent.name}** agent.`,
       agent.description ? `Agent description: ${agent.description}` : '',
       '',
-      `Provide your output in Markdown format with structured sections.`,
-      `Include a summary section at the end.`,
-      sourceContext ? '' : '',
+      jsonOutputSchema
+        ? `CRITICAL: You MUST respond with a JSON object. No markdown, no explanation outside JSON. Output ONLY valid JSON matching this schema:\n\`\`\`json\n${jsonOutputSchema}\n\`\`\``
+        : `Provide your output in Markdown format with structured sections.\nInclude a summary section at the end.`,
+      '',
       sourceContext || '',
     ]
       .filter(Boolean)
@@ -240,6 +243,43 @@ export class AgentExecutionService {
     ]
       .filter(Boolean)
       .join('\n');
+  }
+
+  /**
+   * Returns JSON schema instructions for agents that populate registries.
+   * Returns null for agents that don't need JSON output (orchestrator, report_generator, etc.)
+   */
+  private getJsonOutputSchema(agentType: AgentType): string | null {
+    switch (agentType) {
+      case AgentType.ARCHITECT:
+        return JSON.stringify({
+          modules: [{ name: 'string', layerType: 'frontend|backend|database|infra|docs|cross_cutting', description: 'string', confidenceLevel: 'confirmed|inferred' }],
+          summary: 'string',
+        }, null, 2);
+      case AgentType.SCHEMA_MAPPER:
+        return JSON.stringify({
+          schemas: [{ entityName: 'string', tableName: 'string', description: 'string', fields: [{ fieldName: 'string', dataType: 'string', isNullable: false, isPrimary: false }] }],
+          summary: 'string',
+        }, null, 2);
+      case AgentType.API_ANALYZER:
+        return JSON.stringify({
+          apis: [{ name: 'string', httpMethod: 'GET|POST|PUT|PATCH|DELETE', path: 'string', description: 'string', authRequired: true }],
+          routes: [{ path: 'string', routeType: 'frontend|backend|internal_action', method: 'string', description: 'string' }],
+          summary: 'string',
+        }, null, 2);
+      case AgentType.UI_INSPECTOR:
+        return JSON.stringify({
+          screens: [{ screenName: 'string', routePath: 'string', componentName: 'string', stateType: 'page|modal|table|form|dashboard|detail_view', description: 'string' }],
+          summary: 'string',
+        }, null, 2);
+      case AgentType.EVIDENCE_COLLECTOR:
+        return JSON.stringify({
+          evidence: [{ title: 'string', evidenceType: 'code_excerpt|document_excerpt|observed_route|screenshot_note|api_trace|manual_note', contentExcerpt: 'string', referencePath: 'string' }],
+          summary: 'string',
+        }, null, 2);
+      default:
+        return null;
+    }
   }
 
   private async log(

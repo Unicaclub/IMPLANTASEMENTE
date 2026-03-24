@@ -121,7 +121,7 @@ export class RegistryPopulationService {
           status: StatusBase.ACTIVE,
           confidenceStatus: this.resolveConfidence(String(mod['confidenceLevel'] ?? '')),
         });
-        await this.moduleRepo.save(entity);
+        await this.moduleRepo.upsert(entity, ['projectId', 'slug']);
         count++;
       } catch (err) {
         this.logger.warn(`Failed to populate module entry: ${err}`);

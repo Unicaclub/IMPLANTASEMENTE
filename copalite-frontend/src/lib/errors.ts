@@ -27,7 +27,12 @@ export function toUserMessage(
   }
 
   if (error instanceof Error) {
-    return error.message || fallback;
+    const msg = error.message || '';
+    // Never expose file paths, stack traces or internal details
+    if (msg.includes('\\') || msg.includes('/src/') || msg.includes('node_modules') || msg.length > 200) {
+      return fallback;
+    }
+    return msg || fallback;
   }
 
   return fallback;
