@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { Bell, Search } from 'lucide-react';
 
 interface HeaderProps {
@@ -20,10 +21,10 @@ export default function Header({ title, subtitle, actions }: HeaderProps) {
         <button className="p-2 rounded-lg text-coal-500 hover:text-coal-300 hover:bg-coal-800/60 transition-all">
           <Search size={18} />
         </button>
-        <button className="p-2 rounded-lg text-coal-500 hover:text-coal-300 hover:bg-coal-800/60 transition-all relative">
+        <Link href="/notifications" className="p-2 rounded-lg text-coal-500 hover:text-coal-300 hover:bg-coal-800/60 transition-all relative">
           <Bell size={18} />
           <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-emerald-500 rounded-full" />
-        </button>
+        </Link>
         <div className="w-8 h-8 rounded-full bg-emerald-600/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 text-xs font-bold ml-2">
           A
         </div>

@@ -49,6 +49,15 @@ import { BacklogModule } from './modules/backlog/backlog.module';
 import { ComparisonsModule } from './modules/comparisons/comparisons.module';
 import { TasksModule } from './modules/tasks/tasks.module';
 
+// Modules - Phase 7: Browser Foundation
+import { BrowserEvidenceModule } from './modules/browser-evidence/browser-evidence.module';
+import { BrowserProblemsModule } from './modules/browser-problems/browser-problems.module';
+import { BrowserRunsModule } from './modules/browser-runs/browser-runs.module';
+import { BrowserSpecsModule } from './modules/browser-specs/browser-specs.module';
+import { JourneysModule } from './modules/journeys/journeys.module';
+import { TargetSessionsModule } from './modules/target-sessions/target-sessions.module';
+import { TargetsModule } from './modules/targets/targets.module';
+
 // Modules - Phase 6: Governance and Tracking
 import { ActivityHistoryModule } from './modules/activity-history/activity-history.module';
 import { AuditsModule } from './modules/audits/audits.module';
@@ -120,6 +129,15 @@ import { SystemHealthModule } from './modules/system-health/system-health.module
     NotificationsModule,
     SystemHealthModule,
     ActivityHistoryModule,
+
+    // Phase 7: Browser Foundation
+    TargetsModule,
+    TargetSessionsModule,
+    BrowserRunsModule,
+    BrowserEvidenceModule,
+    BrowserProblemsModule,
+    BrowserSpecsModule,
+    JourneysModule,
   ],
   providers: [
     // JWT guard global — all routes protected except @Public()

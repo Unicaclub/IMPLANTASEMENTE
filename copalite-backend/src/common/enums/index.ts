@@ -237,3 +237,77 @@ export const AUDIT_TYPES = [
   'other',
 ] as const;
 export type AuditType = (typeof AUDIT_TYPES)[number];
+
+// ============================================
+// Browser Foundation — Sprint 1
+// ============================================
+
+export enum TargetStatus {
+  ACTIVE = 'active',
+  INACTIVE = 'inactive',
+  BLOCKED = 'blocked',
+}
+
+export enum SessionStatus {
+  PENDING = 'pending',
+  VALID = 'valid',
+  EXPIRED = 'expired',
+  FAILED = 'failed',
+}
+
+export enum BrowserRunStatus {
+  PENDING = 'pending',
+  RUNNING = 'running',
+  COMPLETED = 'completed',
+  FAILED = 'failed',
+  BLOCKED = 'blocked',
+}
+
+export enum EvidenceKind {
+  SCREENSHOT = 'screenshot',
+  DOM = 'dom',
+  REQUEST = 'request',
+  RESPONSE = 'response',
+  CONSOLE = 'console',
+  ACTION = 'action',
+}
+
+export enum ProblemType {
+  CONSOLE_ERROR = 'console_error',
+  REQUEST_FAILED = 'request_failed',
+  RESPONSE_4XX = 'response_4xx',
+  RESPONSE_5XX = 'response_5xx',
+  AUTH_REDIRECT = 'auth_redirect',
+}
+
+export enum ProblemSeverity {
+  LOW = 'low',
+  MEDIUM = 'medium',
+  HIGH = 'high',
+  CRITICAL = 'critical',
+}
+
+export const SYSTEM_TYPES = [
+  'web_application',
+  'api_service',
+  'legacy_system',
+  'mobile_web',
+  'spa',
+  'other',
+] as const;
+export type SystemType = (typeof SYSTEM_TYPES)[number];
+
+export enum JourneyStatus {
+  PENDING = 'pending',
+  RUNNING = 'running',
+  PASSED = 'passed',
+  FAILED = 'failed',
+  PARTIAL = 'partial',
+}
+
+export enum StepResultStatus {
+  PASSED = 'passed',
+  FAILED = 'failed',
+  PARTIAL = 'partial',
+  SKIPPED = 'skipped',
+}

@@ -5,9 +5,10 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, FolderKanban, Database, Play, GitBranch,
-  FileSearch, ListChecks, CheckSquare, Shield, Settings,
+  FileSearch, ListChecks, CheckSquare, Shield,
   LogOut, Boxes, Globe, Code2, Layers, MonitorSmartphone, Activity, Bot, Bell,
-  Menu, X
+  Menu, X, GitCompare, ShieldAlert, History, BarChart2, ClipboardList,
+  Crosshair, Monitor
 } from 'lucide-react';
 import clsx from 'clsx';
 import { api } from '@/lib/api';
@@ -25,9 +26,8 @@ export default function Sidebar({ projectId, projectName }: SidebarProps) {
 
   const mainNav = [
     { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-    { label: 'System Health', href: '/dashboard/system', icon: Activity },
-    { label: 'Notifications', href: '/notifications', icon: Bell },
-    { label: 'Workspaces', href: '/workspaces', icon: Boxes },
+    { label: 'Saude', href: '/admin/health', icon: ShieldAlert },
+    { label: 'Notificacoes', href: '/notifications', icon: Bell },
   ];
 
   const projectNav = projectId ? [
@@ -43,10 +43,19 @@ export default function Sidebar({ projectId, projectName }: SidebarProps) {
     { label: 'UI Screens', href: `/projects/${projectId}/registries?tab=ui`, icon: MonitorSmartphone },
     { divider: true, label: 'Action' },
     { label: 'Evidence', href: `/projects/${projectId}/evidence`, icon: FileSearch },
+    { label: 'Comparisons', href: `/projects/${projectId}/comparisons`, icon: GitCompare },
     { label: 'Backlog', href: `/projects/${projectId}/backlog`, icon: ListChecks },
     { label: 'Tasks', href: `/projects/${projectId}/tasks`, icon: CheckSquare },
+    { label: 'Audits', href: `/projects/${projectId}/audits`, icon: ClipboardList },
+    { label: 'Reports', href: `/projects/${projectId}/reports`, icon: BarChart2 },
+    { divider: true, label: 'Browser' },
+    { label: 'Targets', href: `/projects/${projectId}/targets`, icon: Crosshair },
+    { label: 'Browser Runs', href: `/projects/${projectId}/browser-runs`, icon: Monitor },
+    { label: 'Run Diff', href: `/projects/${projectId}/browser-runs/diff`, icon: GitCompare },
+    { label: 'Jornadas', href: `/projects/${projectId}/journeys`, icon: Play },
     { divider: true, label: 'Intelligence' },
     { label: 'Agents', href: `/projects/${projectId}/agents`, icon: Bot },
+    { label: 'Atividade', href: `/projects/${projectId}/activity`, icon: History },
   ] : [];
 
   const sidebarContent = (
@@ -121,14 +130,10 @@ export default function Sidebar({ projectId, projectName }: SidebarProps) {
 
       {/* Bottom */}
       <div className="p-3 border-t border-coal-800/60 space-y-1">
-        <Link href="/settings" onClick={() => setMobileOpen(false)}
-          className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-coal-500 hover:text-coal-300 hover:bg-coal-800/60 transition-all">
-          <Settings size={16} /> Settings
-        </Link>
         <button
           onClick={async () => { await api.logout(); window.location.href = '/auth/login'; }}
           className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-coal-500 hover:text-rose-400 hover:bg-rose-500/10 transition-all w-full">
-          <LogOut size={16} /> Logout
+          <LogOut size={16} /> Sair
         </button>
       </div>
     </>

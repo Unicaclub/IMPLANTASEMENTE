@@ -22,26 +22,41 @@ export class AllExceptionsFilter implements ExceptionFilter {
       ? exception.getStatus()
       : HttpStatus.INTERNAL_SERVER_ERROR;
 
+    const exceptionResponse = isHttpException ? exception.getResponse() : null;
     const message = isHttpException
-      ? exception.message
+      ? (typeof exceptionResponse === 'object' && exceptionResponse !== null
+          ? (exceptionResponse as Record<string, unknown>).message || exception.message
+          : exception.message)
       : 'Internal server error';
 
     // Log only unexpected errors as errors; known HTTP exceptions as warnings
     if (isHttpException && status < 500) {
       this.logger.warn(
-        `${request.method} ${request.url} ${status} — ${message}`,
+        `${request.method} ${request.url} ${status} — ${typeof message === 'string' ? message : JSON.stringify(message)}`,
       );
     } else {
       this.logger.error(
-        `${request.method} ${request.url} ${status} — ${message}`,
+        `${request.method} ${request.url} ${status} — ${typeof message === 'string' ? message : JSON.stringify(message)}`,
         exception instanceof Error ? exception.stack : undefined,
       );
     }
 
-    response.status(status).json({
-      statusCode: status,
-      message,
-      timestamp: new Date().toISOString(),
-    });
+    if (response.headersSent) {
+      return;
+    }
+
+    // Preserve structured error responses (validation errors, etc.)
+    if (isHttpException && typeof exceptionResponse === 'object' && exceptionResponse !== null) {
+      response.status(status).json({
+        ...(exceptionResponse as Record<string, unknown>),
+        timestamp: new Date().toISOString(),
+      });
+    } else {
+      response.status(status).json({
+        statusCode: status,
+        message,
+        timestamp: new Date().toISOString(),
+      });
+    }
   }
 }

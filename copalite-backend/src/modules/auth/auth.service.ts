@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -7,6 +7,7 @@ import { Repository } from 'typeorm';
 import { JwtPayload } from '../../common/interfaces/jwt-payload.interface';
 import { UserEntity } from '../users/entities/user.entity';
 import { LoginDto } from './dto/login.dto';
+import { RegisterDto } from './dto/register.dto';
 
 @Injectable()
 export class AuthService {
@@ -20,9 +21,30 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
   ) {
-    this.refreshSecret = this.configService.get<string>('JWT_SECRET', 'copalite-dev-secret') + '-refresh';
+    this.refreshSecret = this.configService.getOrThrow<string>('JWT_REFRESH_SECRET');
     this.refreshExpiration = '7d';
     this.accessExpirationSeconds = 15 * 60;
+  }
+
+  async register(dto: RegisterDto) {
+    const exists = await this.userRepo.findOne({ where: { email: dto.email } });
+    if (exists) {
+      throw new ConflictException('Email ja registrado');
+    }
+
+    const passwordHash = await bcrypt.hash(dto.password, 12);
+    const user = this.userRepo.create({
+      fullName: dto.fullName,
+      email: dto.email,
+      passwordHash,
+    });
+    const saved = await this.userRepo.save(user);
+
+    const tokens = this.generateTokens(saved.id, saved.email);
+    return {
+      ...tokens,
+      user: { id: saved.id, email: saved.email, fullName: saved.fullName },
+    };
   }
 
   async login(dto: LoginDto) {

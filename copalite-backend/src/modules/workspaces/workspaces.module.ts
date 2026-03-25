@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { AdminGuard } from '../../common/guards/admin.guard';
 import { ActivityHistoryModule } from '../activity-history/activity-history.module';
 import { WorkspaceMemberEntity } from './entities/workspace-member.entity';
 import { WorkspaceEntity } from './entities/workspace.entity';
@@ -9,7 +10,7 @@ import { WorkspacesService } from './workspaces.service';
 @Module({
   imports: [TypeOrmModule.forFeature([WorkspaceEntity, WorkspaceMemberEntity]), ActivityHistoryModule],
   controllers: [WorkspacesController],
-  providers: [WorkspacesService],
+  providers: [WorkspacesService, AdminGuard],
   exports: [WorkspacesService, TypeOrmModule],
 })
 export class WorkspacesModule {}

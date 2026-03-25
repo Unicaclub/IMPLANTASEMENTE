@@ -424,6 +424,78 @@ class ApiClient {
   getSystemHealth() {
     return this.get<any>('/system-health/live');
   }
+
+  // === TARGETS (Browser Foundation) ===
+  async listTargets(projectId: string) {
+    const payload = await this.get<any>(`/targets?projectId=${projectId}`);
+    return Array.isArray(payload) ? payload : [];
+  }
+  createTarget(data: any) { return this.post<any>('/targets', data); }
+  getTarget(id: string) { return this.get<any>(`/targets/${id}`); }
+  updateTarget(id: string, data: any) { return this.patch<any>(`/targets/${id}`, data); }
+
+  // === TARGET SESSIONS ===
+  async listSessions(targetId: string) {
+    const payload = await this.get<any>(`/target-sessions?targetId=${targetId}`);
+    return Array.isArray(payload) ? payload : [];
+  }
+  validateSession(data: any) { return this.post<any>('/target-sessions/validate', data); }
+
+  // === BROWSER RUNS ===
+  async listBrowserRuns(projectId: string) {
+    const payload = await this.get<any>(`/browser-runs?projectId=${projectId}`);
+    return Array.isArray(payload) ? payload : [];
+  }
+  createBrowserRun(data: any) { return this.post<any>('/browser-runs', data); }
+  getBrowserRun(id: string) { return this.get<any>(`/browser-runs/${id}`); }
+
+  // === BROWSER EVIDENCE ===
+  async listBrowserEvidence(runId: string) {
+    const payload = await this.get<any>(`/browser-evidence/by-run/${runId}`);
+    return Array.isArray(payload) ? payload : [];
+  }
+  createBrowserEvidence(data: any) { return this.post<any>('/browser-evidence', data); }
+
+  // === BROWSER PROBLEMS ===
+  async listBrowserProblems(runId: string) {
+    const payload = await this.get<any>(`/browser-problems/by-run/${runId}`);
+    return Array.isArray(payload) ? payload : [];
+  }
+  getBrowserProblemSummary(runId: string) {
+    return this.get<any>(`/browser-problems/summary/${runId}`);
+  }
+  getBrowserProblemDiff(runIdA: string, runIdB: string) {
+    return this.get<any>(`/browser-problems/diff?runIdA=${runIdA}&runIdB=${runIdB}`);
+  }
+
+  // === BROWSER SPECS ===
+  getBrowserSpec(runId: string, baseRunId?: string) {
+    const q = baseRunId ? `?baseRunId=${baseRunId}` : '';
+    return this.get<any>(`/browser-specs/by-run/${runId}${q}`);
+  }
+  saveBrowserSpec(runId: string, baseRunId?: string) {
+    const q = baseRunId ? `?baseRunId=${baseRunId}` : '';
+    return this.post<any>(`/browser-specs/by-run/${runId}/save${q}`, {});
+  }
+  async listSpecHistory(runId: string) {
+    const payload = await this.get<any>(`/browser-specs/history/${runId}`);
+    return Array.isArray(payload) ? payload : [];
+  }
+
+  // === JOURNEYS ===
+  getAvailableJourneys() { return this.get<any>('/journeys/available'); }
+  executeJourney(slug: string, projectId: string, targetId: string) {
+    return this.post<any>(`/journeys/execute/${slug}?projectId=${projectId}&targetId=${targetId}`, {});
+  }
+  async listJourneys(projectId: string) {
+    const payload = await this.get<any>(`/journeys?projectId=${projectId}`);
+    return Array.isArray(payload) ? payload : [];
+  }
+  getJourneyRun(id: string) { return this.get<any>(`/journeys/${id}`); }
+  async getJourneySteps(id: string) {
+    const payload = await this.get<any>(`/journeys/${id}/steps`);
+    return Array.isArray(payload) ? payload : [];
+  }
 }
 
 export const api = new ApiClient();

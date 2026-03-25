@@ -1,15 +1,23 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { TasksService } from './tasks.service';
-import { CreateTaskFromBacklogDto, UpdateTaskDto } from './dto';
+import { CreateTaskDto, CreateTaskFromBacklogDto, UpdateTaskDto } from './dto';
 import { PaginationQueryDto } from '../../common/pipes/pagination';
 
-@ApiTags('Tasks') @ApiBearerAuth() @Controller('tasks')
+@ApiTags('Tasks')
+@ApiBearerAuth()
+@Controller('tasks')
 export class TasksController {
   constructor(private readonly svc: TasksService) {}
 
+  @Post()
+  @ApiOperation({ summary: 'Criar task diretamente' })
+  async create(@Body() dto: CreateTaskDto) {
+    return this.svc.create(dto);
+  }
+
   @Post('from-backlog')
-  @ApiOperation({ summary: 'Create task from approved backlog item (human gate enforced)' })
+  @ApiOperation({ summary: 'Criar task a partir de backlog aprovado (human gate)' })
   async createFromBacklog(@Body() dto: CreateTaskFromBacklogDto) {
     return this.svc.createFromBacklog(dto);
   }
@@ -28,5 +36,10 @@ export class TasksController {
   @Patch(':id')
   async update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateTaskDto) {
     return this.svc.update(id, dto);
+  }
+
+  @Delete(':id')
+  async remove(@Param('id', ParseUUIDPipe) id: string) {
+    return this.svc.remove(id);
   }
 }

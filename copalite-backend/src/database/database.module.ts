@@ -13,7 +13,7 @@ import { ActivityHistorySubscriber } from '../common/subscribers/activity-histor
         host: configService.get<string>('DB_HOST', 'localhost'),
         port: configService.get<number>('DB_PORT', 5432),
         username: configService.get<string>('DB_USERNAME', 'copalite'),
-        password: configService.get<string>('DB_PASSWORD', 'copalite_dev_2024'),
+        password: configService.getOrThrow<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_DATABASE', 'copalite_db'),
         synchronize: false,
         logging: configService.get<string>('DB_LOGGING', 'false') === 'true',

@@ -1,7 +1,7 @@
 import {
-  Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post,
+  Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { WorkspacesService } from './workspaces.service';
 import {
   CreateWorkspaceDto,
@@ -10,6 +10,7 @@ import {
   UpdateWorkspaceMemberDto,
 } from './dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { AdminGuard } from '../../common/guards/admin.guard';
 
 @ApiTags('Workspaces')
 @ApiBearerAuth()
@@ -49,6 +50,8 @@ export class WorkspacesController {
   }
 
   @Post(':id/members')
+  @UseGuards(AdminGuard)
+  @ApiOperation({ summary: 'Adicionar membro (requer OWNER/ADMIN)' })
   async addMember(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: AddWorkspaceMemberDto,
@@ -57,6 +60,8 @@ export class WorkspacesController {
   }
 
   @Patch(':id/members/:memberId')
+  @UseGuards(AdminGuard)
+  @ApiOperation({ summary: 'Alterar papel de membro (requer OWNER/ADMIN)' })
   async updateMemberRole(
     @Param('id', ParseUUIDPipe) id: string,
     @Param('memberId', ParseUUIDPipe) memberId: string,
@@ -66,6 +71,8 @@ export class WorkspacesController {
   }
 
   @Delete(':id/members/:memberId')
+  @UseGuards(AdminGuard)
+  @ApiOperation({ summary: 'Remover membro (requer OWNER/ADMIN)' })
   async removeMember(
     @Param('id', ParseUUIDPipe) id: string,
     @Param('memberId', ParseUUIDPipe) memberId: string,
