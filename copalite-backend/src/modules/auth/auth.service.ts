@@ -1,28 +1,35 @@
-import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { ConflictException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
-import { Repository } from 'typeorm';
+import * as crypto from 'crypto';
+import { IsNull, Repository } from 'typeorm';
 import { JwtPayload } from '../../common/interfaces/jwt-payload.interface';
 import { UserEntity } from '../users/entities/user.entity';
+import { RefreshTokenEntity } from './entities/refresh-token.entity';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
   private readonly refreshSecret: string;
   private readonly refreshExpiration: string;
+  private readonly refreshExpirationMs: number;
   private readonly accessExpirationSeconds: number;
 
   constructor(
     @InjectRepository(UserEntity)
     private readonly userRepo: Repository<UserEntity>,
+    @InjectRepository(RefreshTokenEntity)
+    private readonly refreshTokenRepo: Repository<RefreshTokenEntity>,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
   ) {
     this.refreshSecret = this.configService.getOrThrow<string>('JWT_REFRESH_SECRET');
     this.refreshExpiration = '7d';
+    this.refreshExpirationMs = 7 * 24 * 60 * 60 * 1000;
     this.accessExpirationSeconds = 15 * 60;
   }
 
@@ -40,7 +47,7 @@ export class AuthService {
     });
     const saved = await this.userRepo.save(user);
 
-    const tokens = this.generateTokens(saved.id, saved.email);
+    const tokens = await this.generateAndPersistTokens(saved.id, saved.email);
     return {
       ...tokens,
       user: { id: saved.id, email: saved.email, fullName: saved.fullName },
@@ -68,7 +75,7 @@ export class AuthService {
 
     await this.userRepo.update(user.id, { lastLoginAt: new Date() });
 
-    const tokens = this.generateTokens(user.id, user.email);
+    const tokens = await this.generateAndPersistTokens(user.id, user.email);
 
     return {
       ...tokens,
@@ -81,20 +88,53 @@ export class AuthService {
   }
 
   async refresh(refreshToken: string) {
+    let payload: JwtPayload;
     try {
-      const payload = this.jwtService.verify<JwtPayload>(refreshToken, {
+      payload = this.jwtService.verify<JwtPayload>(refreshToken, {
         secret: this.refreshSecret,
       });
-
-      const user = await this.userRepo.findOne({ where: { id: payload.sub } });
-      if (user?.status !== 'active') {
-        throw new UnauthorizedException('User not found or inactive');
-      }
-
-      return this.generateTokens(user.id, user.email);
     } catch {
       throw new UnauthorizedException('Invalid or expired refresh token');
     }
+
+    // Validate token exists in DB and is not revoked
+    const tokenHash = this.hashToken(refreshToken);
+    const stored = await this.refreshTokenRepo.findOne({
+      where: { tokenHash, revokedAt: IsNull() },
+    });
+
+    if (!stored) {
+      this.logger.warn(`Refresh token not found or revoked for user ${payload.sub}`);
+      throw new UnauthorizedException('Refresh token revoked or not found');
+    }
+
+    const user = await this.userRepo.findOne({ where: { id: payload.sub } });
+    if (user?.status !== 'active') {
+      throw new UnauthorizedException('User not found or inactive');
+    }
+
+    // Rotation: revoke old token, issue new one
+    stored.revokedAt = new Date();
+    await this.refreshTokenRepo.save(stored);
+
+    return this.generateAndPersistTokens(user.id, user.email);
+  }
+
+  async logout(refreshToken: string) {
+    if (!refreshToken) return;
+
+    const tokenHash = this.hashToken(refreshToken);
+    await this.refreshTokenRepo.update(
+      { tokenHash, revokedAt: IsNull() },
+      { revokedAt: new Date() },
+    );
+  }
+
+  async revokeAllUserTokens(userId: string) {
+    await this.refreshTokenRepo.update(
+      { userId, revokedAt: IsNull() },
+      { revokedAt: new Date() },
+    );
   }
 
   async getProfile(userId: string) {
@@ -105,7 +145,7 @@ export class AuthService {
     return user;
   }
 
-  private generateTokens(userId: string, email: string) {
+  private async generateAndPersistTokens(userId: string, email: string) {
     const payload: JwtPayload = { sub: userId, email };
 
     const accessToken = this.jwtService.sign(payload);
@@ -114,10 +154,22 @@ export class AuthService {
       expiresIn: this.refreshExpiration,
     });
 
+    // Persist refresh token hash
+    const tokenHash = this.hashToken(refreshToken);
+    await this.refreshTokenRepo.save(this.refreshTokenRepo.create({
+      userId,
+      tokenHash,
+      expiresAt: new Date(Date.now() + this.refreshExpirationMs),
+    }));
+
     return {
       accessToken,
       refreshToken,
       accessTokenExpiresAt: new Date(Date.now() + this.accessExpirationSeconds * 1000).toISOString(),
     };
+  }
+
+  private hashToken(token: string): string {
+    return crypto.createHash('sha256').update(token).digest('hex');
   }
 }

@@ -89,8 +89,10 @@ export class AuthController {
 
   @Public()
   @Post('logout')
-  async logout(@Res({ passthrough: true }) res: Response) {
+  async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     res.setHeader('Cache-Control', 'no-store');
+    const refreshToken = req.cookies?.copalite_refresh;
+    await this.authService.logout(refreshToken);
     this.clearRefreshCookie(res);
     return { message: 'Logged out' };
   }
