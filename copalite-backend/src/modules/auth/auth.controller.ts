@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Req, Res } from '@nestjs/common';
+import { Body, Controller, Get, Post, Req, Res, UnauthorizedException } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { Request, Response } from 'express';
@@ -71,7 +71,7 @@ export class AuthController {
     const refreshToken = req.cookies?.copalite_refresh;
     if (!refreshToken) {
       this.clearRefreshCookie(res);
-      return res.status(401).json({ message: 'No refresh token' });
+      throw new UnauthorizedException('No refresh token');
     }
 
     try {
@@ -83,7 +83,7 @@ export class AuthController {
       };
     } catch {
       this.clearRefreshCookie(res);
-      return res.status(401).json({ message: 'Invalid or expired refresh token' });
+      throw new UnauthorizedException('Invalid or expired refresh token');
     }
   }
 
