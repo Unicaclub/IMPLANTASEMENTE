@@ -82,8 +82,9 @@ describe('BrowserAgentService', () => {
     targetRepo = { findOne: jest.fn() };
     sessionRepo = { update: jest.fn().mockResolvedValue({ affected: 1 }) };
     const problemsService = { persistFromRun: jest.fn().mockResolvedValue([]) };
+    const lockService = { tryAcquire: jest.fn().mockResolvedValue(true), release: jest.fn().mockResolvedValue(undefined) };
 
-    service = new BrowserAgentService(runRepo, evidenceRepo, targetRepo, sessionRepo, problemsService as any);
+    service = new BrowserAgentService(runRepo, evidenceRepo, targetRepo, sessionRepo, problemsService as any, lockService as any);
   });
 
   test('execute completes with pages visited', async () => {
