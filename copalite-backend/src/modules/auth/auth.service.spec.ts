@@ -9,8 +9,8 @@ describe('AuthService', () => {
 
   const refreshTokenRepo = {
     findOne: jest.fn(),
-    create: jest.fn().mockImplementation(d => d),
-    save: jest.fn().mockImplementation(e => ({ id: 'rt-1', ...e })),
+    create: jest.fn().mockImplementation((d) => d),
+    save: jest.fn().mockImplementation((e) => ({ id: 'rt-1', ...e })),
     update: jest.fn().mockResolvedValue({ affected: 1 }),
   } as any;
 
@@ -63,7 +63,9 @@ describe('AuthService', () => {
       status: 'inactive',
     });
 
-    await expect(service.login({ email: 'inactive@copalite.io', password: '123456' })).rejects.toBeInstanceOf(UnauthorizedException);
+    await expect(
+      service.login({ email: 'inactive@copalite.io', password: '123456' }),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
   });
 
   it('should revoke token on logout', async () => {
