@@ -13,23 +13,33 @@ import { RegisterDto } from './dto/register.dto';
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  private get cookieOptions(): {
+    httpOnly: boolean;
+    secure: boolean;
+    sameSite: 'strict' | 'lax' | 'none';
+    path: string;
+  } {
+    const isProduction = process.env.NODE_ENV === 'production';
+    // In dev, Next.js proxies /api/* to the backend, so requests are same-origin.
+    // SameSite=Lax works correctly for same-origin POST requests.
+    // In production behind HTTPS: Strict + Secure for maximum protection.
+    return {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: isProduction ? 'strict' : 'lax',
+      path: '/',
+    };
+  }
+
   private setRefreshCookie(res: Response, refreshToken: string) {
     res.cookie('copalite_refresh', refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      ...this.cookieOptions,
       maxAge: 7 * 24 * 60 * 60 * 1000,
-      path: '/',
     });
   }
 
   private clearRefreshCookie(res: Response) {
-    res.clearCookie('copalite_refresh', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
-    });
+    res.clearCookie('copalite_refresh', this.cookieOptions);
   }
 
   @Public()

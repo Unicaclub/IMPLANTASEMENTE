@@ -111,6 +111,16 @@ export class RegistryPopulationService {
           .substring(0, 200);
         const layerType = this.resolveLayerType(String(mod['layerType'] ?? ''));
 
+        // Extract files and dependencies arrays from LLM output
+        const rawFiles = mod['files'];
+        const files = Array.isArray(rawFiles)
+          ? rawFiles.map((f: unknown) => String(f)).slice(0, 200)
+          : [];
+        const rawDeps = mod['dependencies'];
+        const dependencies = Array.isArray(rawDeps)
+          ? rawDeps.map((d: unknown) => String(d)).slice(0, 100)
+          : [];
+
         const entity = this.moduleRepo.create({
           projectId: ctx.projectId,
           runId: ctx.runId,
@@ -118,6 +128,8 @@ export class RegistryPopulationService {
           slug,
           layerType,
           description: mod['description'] ? String(mod['description']).substring(0, 5000) : null,
+          files,
+          dependencies,
           status: StatusBase.ACTIVE,
           confidenceStatus: this.resolveConfidence(String(mod['confidenceLevel'] ?? '')),
         });

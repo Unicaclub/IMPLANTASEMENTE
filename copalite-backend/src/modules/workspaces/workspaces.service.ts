@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { StatusBase, WorkspaceMemberRole } from '../../common/enums';
@@ -68,21 +68,47 @@ export class WorkspacesService {
     return memberships.map((m) => m.workspace);
   }
 
-  async findById(id: string): Promise<WorkspaceEntity> {
+  async findById(id: string, userId?: string): Promise<WorkspaceEntity> {
     const workspace = await this.workspaceRepo.findOne({ where: { id } });
     if (!workspace) {
       throw new NotFoundException('Workspace not found');
     }
+    if (userId) {
+      await this.assertMembership(id, userId);
+    }
     return workspace;
   }
 
-  async update(id: string, dto: UpdateWorkspaceDto): Promise<WorkspaceEntity> {
+  private async assertMembership(workspaceId: string, userId: string): Promise<WorkspaceMemberEntity> {
+    const member = await this.memberRepo.findOne({
+      where: { workspaceId, userId, status: StatusBase.ACTIVE },
+    });
+    if (!member) {
+      throw new ForbiddenException('Not a member of this workspace');
+    }
+    return member;
+  }
+
+  private async assertAdmin(workspaceId: string, userId: string): Promise<void> {
+    const member = await this.assertMembership(workspaceId, userId);
+    if (member.memberRole !== WorkspaceMemberRole.OWNER && member.memberRole !== WorkspaceMemberRole.ADMIN) {
+      throw new ForbiddenException('Admin access required for this workspace');
+    }
+  }
+
+  async update(id: string, dto: UpdateWorkspaceDto, userId?: string): Promise<WorkspaceEntity> {
     const workspace = await this.findById(id);
+    if (userId) {
+      await this.assertAdmin(id, userId);
+    }
     Object.assign(workspace, dto);
     return this.workspaceRepo.save(workspace);
   }
 
-  async addMember(workspaceId: string, dto: AddWorkspaceMemberDto): Promise<WorkspaceMemberEntity> {
+  async addMember(workspaceId: string, dto: AddWorkspaceMemberDto, userId?: string): Promise<WorkspaceMemberEntity> {
+    if (userId) {
+      await this.assertAdmin(workspaceId, userId);
+    }
     const exists = await this.memberRepo.findOne({
       where: { workspaceId, userId: dto.userId },
     });
@@ -99,7 +125,10 @@ export class WorkspacesService {
     return this.memberRepo.save(member);
   }
 
-  async listMembers(workspaceId: string): Promise<WorkspaceMemberEntity[]> {
+  async listMembers(workspaceId: string, userId?: string): Promise<WorkspaceMemberEntity[]> {
+    if (userId) {
+      await this.assertMembership(workspaceId, userId);
+    }
     return this.memberRepo.find({
       where: { workspaceId },
       relations: ['user'],
@@ -111,7 +140,11 @@ export class WorkspacesService {
     workspaceId: string,
     memberId: string,
     dto: UpdateWorkspaceMemberDto,
+    userId?: string,
   ): Promise<WorkspaceMemberEntity> {
+    if (userId) {
+      await this.assertAdmin(workspaceId, userId);
+    }
     const member = await this.memberRepo.findOne({
       where: { id: memberId, workspaceId },
     });
@@ -122,7 +155,10 @@ export class WorkspacesService {
     return this.memberRepo.save(member);
   }
 
-  async removeMember(workspaceId: string, memberId: string): Promise<void> {
+  async removeMember(workspaceId: string, memberId: string, userId?: string): Promise<void> {
+    if (userId) {
+      await this.assertAdmin(workspaceId, userId);
+    }
     const member = await this.memberRepo.findOne({
       where: { id: memberId, workspaceId },
     });

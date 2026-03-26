@@ -6,9 +6,12 @@ const REQUIRED_ENV_VARS = [
   'JWT_REFRESH_SECRET',
 ];
 
+const REQUIRED_IN_PRODUCTION = ['CREDENTIALS_ENCRYPTION_KEY'];
+
 const MINIMUM_LENGTHS: Record<string, number> = {
   JWT_SECRET: 32,
   JWT_REFRESH_SECRET: 32,
+  CREDENTIALS_ENCRYPTION_KEY: 32,
 };
 
 export function validateEnv(): void {
@@ -28,6 +31,21 @@ export function validateEnv(): void {
     }
   }
 
+  // Production-only required vars
+  if (isProduction) {
+    for (const key of REQUIRED_IN_PRODUCTION) {
+      const value = process.env[key];
+      if (!value) {
+        missing.push(key);
+        continue;
+      }
+      const minLength = MINIMUM_LENGTHS[key];
+      if (minLength && value.length < minLength) {
+        invalid.push(`${key} (minimo ${minLength} chars, atual: ${value.length})`);
+      }
+    }
+  }
+
   if (
     process.env.JWT_SECRET &&
     process.env.JWT_REFRESH_SECRET &&
@@ -36,19 +54,16 @@ export function validateEnv(): void {
     invalid.push('JWT_SECRET e JWT_REFRESH_SECRET sao iguais — devem ser diferentes');
   }
 
-  // Warn if CREDENTIALS_ENCRYPTION_KEY not set (falls back to JWT_SECRET)
-  if (isProduction && !process.env.CREDENTIALS_ENCRYPTION_KEY) {
-    console.warn('[WARN] CREDENTIALS_ENCRYPTION_KEY nao definida — usando JWT_SECRET como fallback. Recomendado definir chave separada.');
-  }
+  // CREDENTIALS_ENCRYPTION_KEY checked above via REQUIRED_IN_PRODUCTION
 
   if (missing.length > 0 || invalid.length > 0) {
     if (missing.length > 0) {
       console.error('Variaveis de ambiente obrigatorias faltando:');
-      missing.forEach(v => console.error(`   - ${v}`));
+      missing.forEach((v) => console.error(`   - ${v}`));
     }
     if (invalid.length > 0) {
       console.error('Variaveis de ambiente invalidas:');
-      invalid.forEach(v => console.error(`   - ${v}`));
+      invalid.forEach((v) => console.error(`   - ${v}`));
     }
 
     if (isProduction) {

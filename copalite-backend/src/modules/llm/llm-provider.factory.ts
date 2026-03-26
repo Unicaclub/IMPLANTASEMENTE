@@ -44,8 +44,14 @@ export class LlmProviderFactory {
     };
   }
 
+  /** Max retry attempts for rate-limit (429) and transient server errors (5xx) */
+  private static readonly MAX_RETRIES = 4;
+  /** Base delay in ms for exponential backoff */
+  private static readonly BASE_DELAY_MS = 2_000;
+
   /**
-   * Execute a chat call through the resolved provider.
+   * Execute a chat call through the resolved provider, with automatic
+   * retry + exponential backoff for 429 rate-limit and 5xx errors.
    */
   async chat(messages: LlmMessage[], agentConfig: Record<string, unknown> | null): Promise<LlmResponse> {
     const cfg = this.resolveConfig(agentConfig);
@@ -61,7 +67,44 @@ export class LlmProviderFactory {
 
     this.logger.log(`LLM call → ${cfg.provider}/${cfg.model} (temp=${cfg.temperature}, maxTokens=${cfg.maxTokens})`);
 
-    return provider.chat(messages, cfg);
+    let lastError: Error | undefined;
+
+    for (let attempt = 0; attempt <= LlmProviderFactory.MAX_RETRIES; attempt++) {
+      try {
+        return await provider.chat(messages, cfg);
+      } catch (err: unknown) {
+        lastError = err instanceof Error ? err : new Error(String(err));
+        const msg = lastError.message;
+
+        // Retry on 429 (rate limit) and 5xx (server errors)
+        const isRateLimit = msg.includes('429') || msg.toLowerCase().includes('rate limit');
+        const isServerError = /\b(500|502|503|529)\b/.test(msg);
+        const isRetryable = isRateLimit || isServerError;
+
+        if (!isRetryable || attempt === LlmProviderFactory.MAX_RETRIES) {
+          throw lastError;
+        }
+
+        // Extract retry-after hint from error message if present (e.g. "retry in 9.324s")
+        const retryMatch = msg.match(/retry\s+(?:in\s+|after\s+)([\d.]+)s/i);
+        const retryAfterMs = retryMatch
+          ? Math.ceil(parseFloat(retryMatch[1]) * 1000)
+          : LlmProviderFactory.BASE_DELAY_MS * Math.pow(2, attempt);
+
+        // Add jitter (±20%) to prevent thundering herd
+        const jitter = retryAfterMs * (0.8 + Math.random() * 0.4);
+        const delayMs = Math.min(Math.round(jitter), 60_000); // cap at 60s
+
+        this.logger.warn(
+          `LLM call failed (attempt ${attempt + 1}/${LlmProviderFactory.MAX_RETRIES + 1}): ${msg.substring(0, 200)}. ` +
+          `Retrying in ${delayMs}ms...`,
+        );
+
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+      }
+    }
+
+    throw lastError || new Error('LLM call failed after retries');
   }
 
   /**

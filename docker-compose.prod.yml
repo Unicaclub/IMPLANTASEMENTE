@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   postgres:
@@ -13,7 +13,7 @@ services:
       - copalite_pgdata_prod:/var/lib/postgresql/data
       - ./copalite-backend/migrations:/docker-entrypoint-initdb.d
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U copalite -d copalite_db']
+      test: ["CMD-SHELL", "pg_isready -U copalite -d copalite_db"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -28,7 +28,8 @@ services:
     volumes:
       - copalite_redis_prod:/data
     healthcheck:
-      test: ['CMD', 'redis-cli', '-a', '${REDIS_PASSWORD:-copalite_redis}', 'ping']
+      test:
+        ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-copalite_redis}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -49,12 +50,16 @@ services:
       DB_USERNAME: ${DB_USERNAME:-copalite}
       DB_PASSWORD: ${DB_PASSWORD}
       DB_DATABASE: ${DB_DATABASE:-copalite_db}
-      DB_SYNCHRONIZE: 'false'
-      DB_LOGGING: 'false'
-      DB_SSL: 'false'
+      DB_SYNCHRONIZE: "false"
+      DB_LOGGING: "false"
+      DB_SSL: "false"
       JWT_SECRET: ${JWT_SECRET}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      CREDENTIALS_ENCRYPTION_KEY: ${CREDENTIALS_ENCRYPTION_KEY}
       CORS_ORIGIN: https://${DOMAIN}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-copalite_redis}
       AGENT_AUTO_EXECUTE: ${AGENT_AUTO_EXECUTE:-false}
       DEFAULT_LLM_PROVIDER: ${DEFAULT_LLM_PROVIDER:-anthropic}
       DEFAULT_LLM_MODEL: ${DEFAULT_LLM_MODEL:-claude-sonnet-4-20250514}
@@ -62,7 +67,15 @@ services:
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       GOOGLE_AI_API_KEY: ${GOOGLE_AI_API_KEY:-}
     healthcheck:
-      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:3000/health']
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:3000/health",
+        ]
       interval: 15s
       timeout: 5s
       retries: 3
@@ -93,8 +106,8 @@ services:
     container_name: copalite-nginx
     restart: unless-stopped
     ports:
-      - '80:80'
-      - '443:443'
+      - "80:80"
+      - "443:443"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
       - ./nginx/ssl-params.conf:/etc/nginx/snippets/ssl-params.conf:ro
@@ -118,7 +131,7 @@ services:
   backup:
     image: postgres:15-alpine
     container_name: copalite-backup
-    restart: 'no'
+    restart: "no"
     environment:
       PGHOST: postgres
       PGUSER: ${DB_USERNAME:-copalite}

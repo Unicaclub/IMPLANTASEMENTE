@@ -1,10 +1,10 @@
-import { Controller, Get, Post, Query, Body, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiQuery, ApiTags } from '@nestjs/swagger';
-import { AdminGuard } from '../../common/guards/admin.guard';
-import { LogsService } from './logs.service';
-import { CreateLogDto } from './dto';
-import { PaginationQueryDto } from '../../common/pipes/pagination';
 import { LogLevel } from '../../common/enums';
+import { AdminGuard } from '../../common/guards/admin.guard';
+import { LogsPaginationQueryDto } from '../../common/pipes/pagination';
+import { CreateLogDto } from './dto';
+import { LogsService } from './logs.service';
 
 @ApiTags('Logs')
 @ApiBearerAuth()
@@ -18,15 +18,9 @@ export class LogsController {
   }
 
   @Get()
-  @ApiQuery({ name: 'projectId', required: false })
-  @ApiQuery({ name: 'runId', required: false })
-  async find(
-    @Query('projectId') pid?: string,
-    @Query('runId') rid?: string,
-    @Query() pagination?: PaginationQueryDto,
-  ) {
-    if (rid) return this.svc.findByRun(rid, pagination);
-    if (pid) return this.svc.findByProject(pid, pagination);
+  async find(@Query() query: LogsPaginationQueryDto) {
+    if (query.runId) return this.svc.findByRun(query.runId, query);
+    if (query.projectId) return this.svc.findByProject(query.projectId, query);
     return [];
   }
 }

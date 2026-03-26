@@ -50,7 +50,9 @@ export class AnthropicProvider implements LlmProvider {
 
       if (!res.ok) {
         const body = await res.text();
-        throw new Error(`Anthropic API error ${res.status}: ${body}`);
+        const retryAfter = res.headers.get('retry-after');
+        const retryHint = retryAfter ? ` (retry after ${retryAfter}s)` : '';
+        throw new Error(`Anthropic API error ${res.status}${retryHint}: ${body}`);
       }
 
       const data = await res.json();

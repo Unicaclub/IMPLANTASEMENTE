@@ -215,7 +215,9 @@ export class BrowserAgentService {
     let creds: Record<string, unknown> = {};
     if (target.credentialsJson) {
       try {
-        const raw = target.credentialsJson as Record<string, unknown>;
+        const raw = typeof target.credentialsJson === 'string'
+          ? JSON.parse(target.credentialsJson)
+          : (target.credentialsJson as Record<string, unknown>);
         if (raw._enc && typeof raw._enc === 'string') {
           creds = decryptCredentials(raw._enc);
           this.logger.log('Credentials decrypted successfully');

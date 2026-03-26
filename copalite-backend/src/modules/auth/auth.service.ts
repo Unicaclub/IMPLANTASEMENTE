@@ -4,7 +4,7 @@ import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
-import { IsNull, Repository } from 'typeorm';
+import { IsNull, MoreThan, Repository } from 'typeorm';
 import { JwtPayload } from '../../common/interfaces/jwt-payload.interface';
 import { UserEntity } from '../users/entities/user.entity';
 import { RefreshTokenEntity } from './entities/refresh-token.entity';
@@ -99,11 +99,49 @@ export class AuthService {
 
     // Validate token exists in DB and is not revoked
     const tokenHash = this.hashToken(refreshToken);
-    const stored = await this.refreshTokenRepo.findOne({
+    let stored = await this.refreshTokenRepo.findOne({
       where: { tokenHash, revokedAt: IsNull() },
     });
 
+    // Grace period: if token was revoked within the last 30 seconds (race condition),
+    // find the newest valid token for this user and use it instead
     if (!stored) {
+      const GRACE_PERIOD_MS = 30_000;
+      const recentlyRevoked = await this.refreshTokenRepo.findOne({
+        where: {
+          tokenHash,
+          revokedAt: MoreThan(new Date(Date.now() - GRACE_PERIOD_MS)),
+        },
+      });
+
+      if (recentlyRevoked) {
+        // Race condition detected: return the most recent active token's pair
+        const latestActive = await this.refreshTokenRepo.findOne({
+          where: { userId: payload.sub, revokedAt: IsNull() },
+          order: { createdAt: 'DESC' },
+        });
+
+        if (latestActive) {
+          this.logger.log(
+            `Refresh race condition detected for user ${payload.sub}, reusing latest token`,
+          );
+          // Return new access token using existing valid refresh session
+          const user = await this.userRepo.findOne({ where: { id: payload.sub } });
+          if (user?.status !== 'active') {
+            throw new UnauthorizedException('User not found or inactive');
+          }
+          const accessPayload: JwtPayload = { sub: user.id, email: user.email };
+          const accessToken = this.jwtService.sign(accessPayload);
+          return {
+            accessToken,
+            refreshToken, // Return same refresh token — the new cookie from the first request is already in-flight
+            accessTokenExpiresAt: new Date(
+              Date.now() + this.accessExpirationSeconds * 1000,
+            ).toISOString(),
+          };
+        }
+      }
+
       this.logger.warn(`Refresh token not found or revoked for user ${payload.sub}`);
       throw new UnauthorizedException('Refresh token revoked or not found');
     }
@@ -131,10 +169,7 @@ export class AuthService {
   }
 
   async revokeAllUserTokens(userId: string) {
-    await this.refreshTokenRepo.update(
-      { userId, revokedAt: IsNull() },
-      { revokedAt: new Date() },
-    );
+    await this.refreshTokenRepo.update({ userId, revokedAt: IsNull() }, { revokedAt: new Date() });
   }
 
   async getProfile(userId: string) {
@@ -156,16 +191,20 @@ export class AuthService {
 
     // Persist refresh token hash
     const tokenHash = this.hashToken(refreshToken);
-    await this.refreshTokenRepo.save(this.refreshTokenRepo.create({
-      userId,
-      tokenHash,
-      expiresAt: new Date(Date.now() + this.refreshExpirationMs),
-    }));
+    await this.refreshTokenRepo.save(
+      this.refreshTokenRepo.create({
+        userId,
+        tokenHash,
+        expiresAt: new Date(Date.now() + this.refreshExpirationMs),
+      }),
+    );
 
     return {
       accessToken,
       refreshToken,
-      accessTokenExpiresAt: new Date(Date.now() + this.accessExpirationSeconds * 1000).toISOString(),
+      accessTokenExpiresAt: new Date(
+        Date.now() + this.accessExpirationSeconds * 1000,
+      ).toISOString(),
     };
   }
 

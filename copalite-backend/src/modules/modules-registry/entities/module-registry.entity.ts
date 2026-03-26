@@ -52,6 +52,12 @@ export class ModuleRegistryEntity {
   @Column({ type: 'text', nullable: true })
   description: string | null;
 
+  @Column({ type: 'jsonb', nullable: true, default: '[]' })
+  files: string[];
+
+  @Column({ type: 'jsonb', nullable: true, default: '[]' })
+  dependencies: string[];
+
   @Column({ type: 'enum', enum: StatusBase, default: StatusBase.ACTIVE })
   status: StatusBase;
 

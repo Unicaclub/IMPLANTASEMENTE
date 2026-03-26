@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
-import { ApiBearerAuth, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { PaginationQueryDto } from '../../common/pipes/pagination';
+import { WorkspacePaginationQueryDto } from '../../common/pipes/pagination';
 import { CreateProjectDto, UpdateProjectDto } from './dto';
 import { ProjectsService } from './projects.service';
 
@@ -17,24 +17,17 @@ export class ProjectsController {
   }
 
   @Get()
-  @ApiQuery({ name: 'workspaceId', required: true })
-  async findAll(
-    @Query('workspaceId', ParseUUIDPipe) workspaceId: string,
-    @Query() pagination: PaginationQueryDto,
-  ) {
-    return this.projectsService.findAllByWorkspace(workspaceId, pagination);
+  async findAll(@Query() query: WorkspacePaginationQueryDto, @CurrentUser('id') userId: string) {
+    return this.projectsService.findAllByWorkspace(query.workspaceId, query, userId);
   }
 
   @Get(':id')
-  async findById(@Param('id', ParseUUIDPipe) id: string) {
-    return this.projectsService.findById(id);
+  async findById(@Param('id', ParseUUIDPipe) id: string, @CurrentUser('id') userId: string) {
+    return this.projectsService.findById(id, userId);
   }
 
   @Patch(':id')
-  async update(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() dto: UpdateProjectDto,
-  ) {
-    return this.projectsService.update(id, dto);
+  async update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateProjectDto, @CurrentUser('id') userId: string) {
+    return this.projectsService.update(id, dto, userId);
   }
 }

@@ -1,8 +1,18 @@
-import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
-import { TasksService } from './tasks.service';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ProjectPaginationQueryDto } from '../../common/pipes/pagination';
 import { CreateTaskDto, CreateTaskFromBacklogDto, UpdateTaskDto } from './dto';
-import { PaginationQueryDto } from '../../common/pipes/pagination';
+import { TasksService } from './tasks.service';
 
 @ApiTags('Tasks')
 @ApiBearerAuth()
@@ -23,9 +33,8 @@ export class TasksController {
   }
 
   @Get()
-  @ApiQuery({ name: 'projectId', required: true })
-  async findAll(@Query('projectId', ParseUUIDPipe) pid: string, @Query() pagination: PaginationQueryDto) {
-    return this.svc.findAllByProject(pid, pagination);
+  async findAll(@Query() query: ProjectPaginationQueryDto) {
+    return this.svc.findAllByProject(query.projectId, query);
   }
 
   @Get(':id')

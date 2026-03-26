@@ -1,8 +1,19 @@
-import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ProjectAccessGuard } from '../../common/guards/project-access.guard';
-import { PaginationQueryDto } from '../../common/pipes/pagination';
+import { ProjectPaginationQueryDto } from '../../common/pipes/pagination';
 import { BacklogService } from './backlog.service';
 import { ApproveBacklogItemDto, CreateBacklogItemDto, UpdateBacklogItemDto } from './dto';
 
@@ -19,9 +30,8 @@ export class BacklogController {
   }
 
   @Get()
-  @ApiQuery({ name: 'projectId', required: true })
-  async findAll(@Query('projectId', ParseUUIDPipe) pid: string, @Query() pagination: PaginationQueryDto) {
-    return this.svc.findAllByProject(pid, pagination);
+  async findAll(@Query() query: ProjectPaginationQueryDto) {
+    return this.svc.findAllByProject(query.projectId, query);
   }
 
   @Get('summary')
@@ -56,7 +66,9 @@ export class BacklogController {
   }
 
   @Post('generate-from-run/:runId')
-  @ApiOperation({ summary: 'Gerar backlog automaticamente a partir dos diffs de uma run (idempotente)' })
+  @ApiOperation({
+    summary: 'Gerar backlog automaticamente a partir dos diffs de uma run (idempotente)',
+  })
   async generateFromRun(
     @Param('runId', ParseUUIDPipe) runId: string,
     @Query('projectId') projectId?: string,

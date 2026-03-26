@@ -1,8 +1,19 @@
-import { Body, Controller, ForbiddenException, Get, Param, ParseUUIDPipe, Patch, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  ForbiddenException,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Public } from '../../common/decorators/public.decorator';
+import { AdminGuard } from '../../common/guards/admin.guard';
 import { CreateUserDto, UpdateUserDto } from './dto';
 import { UsersService } from './users.service';
 
@@ -16,11 +27,14 @@ export class UsersController {
   @Post()
   async create(@Body() dto: CreateUserDto) {
     const user = await this.usersService.create(dto);
-    const { passwordHash, ...result } = user as Omit<typeof user, 'passwordHash'> & { passwordHash?: string };
+    const { passwordHash, ...result } = user as Omit<typeof user, 'passwordHash'> & {
+      passwordHash?: string;
+    };
     return result;
   }
 
   @ApiBearerAuth()
+  @UseGuards(AdminGuard)
   @Get()
   async findAll() {
     return this.usersService.findAll();

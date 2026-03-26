@@ -5,13 +5,14 @@ import { WorkspaceMemberEntity } from '../modules/workspaces/entities/workspace-
 import { ProjectAccessGuard } from './guards/project-access.guard';
 import { ExecutionLockService } from './utils/execution-lock.service';
 import { ArtifactCleanupService } from './utils/artifact-cleanup.service';
+import { OwnershipService } from './utils/ownership.service';
 
 @Global()
 @Module({
   imports: [
     TypeOrmModule.forFeature([ProjectEntity, WorkspaceMemberEntity]),
   ],
-  providers: [ProjectAccessGuard, ExecutionLockService, ArtifactCleanupService],
-  exports: [ProjectAccessGuard, ExecutionLockService, ArtifactCleanupService, TypeOrmModule],
+  providers: [ProjectAccessGuard, ExecutionLockService, ArtifactCleanupService, OwnershipService],
+  exports: [ProjectAccessGuard, ExecutionLockService, ArtifactCleanupService, OwnershipService, TypeOrmModule],
 })
 export class SharedModule {}

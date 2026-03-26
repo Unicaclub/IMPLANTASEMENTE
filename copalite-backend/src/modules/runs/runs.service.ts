@@ -1,9 +1,11 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { RunStatus } from '../../common/enums';
 import { PaginatedResponseDto, PaginationQueryDto, getPaginationSkipTake } from '../../common/pipes/pagination';
 import { ActivityHistoryService } from '../activity-history/activity-history.service';
+import { AgentOutputEntity } from '../agent-outputs/entities/agent-output.entity';
+import { AgentRunEntity } from '../agent-runs/entities/agent-run.entity';
 import { NotificationsService } from '../notifications/notifications.service';
 import { ProjectEntity } from '../projects/entities/project.entity';
 import { CreateRunDto, CreateRunStepDto, UpdateRunStatusDto } from './dto';
@@ -19,6 +21,10 @@ export class RunsService {
     private readonly runRepo: Repository<RunEntity>,
     @InjectRepository(RunStepEntity)
     private readonly stepRepo: Repository<RunStepEntity>,
+    @InjectRepository(AgentRunEntity)
+    private readonly agentRunRepo: Repository<AgentRunEntity>,
+    @InjectRepository(AgentOutputEntity)
+    private readonly agentOutputRepo: Repository<AgentOutputEntity>,
     private readonly activityHistory: ActivityHistoryService,
     private readonly notificationsService: NotificationsService,
   ) {}
@@ -129,7 +135,54 @@ export class RunsService {
     return this.stepRepo.save(step);
   }
 
-  async listSteps(runId: string): Promise<RunStepEntity[]> {
-    return this.stepRepo.find({ where: { runId }, order: { stepOrder: 'ASC' } });
+  async listSteps(runId: string): Promise<(RunStepEntity & { agentOutput?: AgentOutputEntity | null; agentRun?: Partial<AgentRunEntity> | null })[]> {
+    const steps = await this.stepRepo.find({ where: { runId }, order: { stepOrder: 'ASC' } });
+    if (steps.length === 0) return [];
+
+    // Get all agent runs for this run, ordered by creation (1 per step in sequence)
+    const agentRuns = await this.agentRunRepo.find({
+      where: { runId },
+      relations: ['agent'],
+      order: { createdAt: 'ASC' },
+    });
+
+    // Get all agent outputs for these agent runs
+    const agentRunIds = agentRuns.map((ar) => ar.id);
+    const outputs = agentRunIds.length > 0
+      ? await this.agentOutputRepo.find({
+          where: { agentRunId: In(agentRunIds) },
+          order: { createdAt: 'DESC' },
+        })
+      : [];
+
+    // Map: agentRunId → latest output
+    const outputByAgentRunId = new Map<string, AgentOutputEntity>();
+    for (const o of outputs) {
+      if (!outputByAgentRunId.has(o.agentRunId)) {
+        outputByAgentRunId.set(o.agentRunId, o);
+      }
+    }
+
+    // Pair steps with agent runs by sequential order
+    return steps.map((step, index) => {
+      const agentRun = agentRuns[index] || null;
+      const agentOutput = agentRun ? outputByAgentRunId.get(agentRun.id) || null : null;
+      return {
+        ...step,
+        agentOutput,
+        agentRun: agentRun
+          ? {
+              id: agentRun.id,
+              agentId: agentRun.agentId,
+              status: agentRun.status,
+              outputSummary: agentRun.outputSummary,
+              confidenceLevel: agentRun.confidenceLevel,
+              startedAt: agentRun.startedAt,
+              finishedAt: agentRun.finishedAt,
+              agent: agentRun.agent,
+            }
+          : null,
+      };
+    });
   }
 }

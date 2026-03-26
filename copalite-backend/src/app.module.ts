@@ -1,5 +1,6 @@
+import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis';
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 
@@ -71,13 +72,26 @@ import { SystemHealthModule } from './modules/system-health/system-health.module
     // Config
     ConfigModule.forRoot({ isGlobal: true }),
 
-    // Rate limiting
-    ThrottlerModule.forRoot([
-      {
-        ttl: 60000, // 60 seconds
-        limit: 100, // 100 requests per minute per IP
+    // Rate limiting (Redis-backed in production, in-memory in dev)
+    ThrottlerModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => {
+        const redisHost = config.get<string>('REDIS_HOST');
+        const storage = redisHost
+          ? new ThrottlerStorageRedisService({
+              host: redisHost,
+              port: config.get<number>('REDIS_PORT', 6379),
+              password: config.get<string>('REDIS_PASSWORD', ''),
+            })
+          : undefined;
+
+        return {
+          throttlers: [{ ttl: 60000, limit: 100 }],
+          ...(storage ? { storage } : {}),
+        };
       },
-    ]),
+    }),
 
     // Database
     DatabaseModule,

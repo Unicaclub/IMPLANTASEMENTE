@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { AgentOutputsService } from './agent-outputs.service';
 import { CreateAgentOutputDto, UpdateAgentOutputValidationDto } from './dto';
@@ -13,9 +13,23 @@ export class AgentOutputsController {
   async create(@Body() dto: CreateAgentOutputDto) { return this.agentOutputsService.create(dto); }
 
   @Get()
-  @ApiQuery({ name: 'agentRunId', required: true })
-  async findAll(@Query('agentRunId', ParseUUIDPipe) agentRunId: string) {
-    return this.agentOutputsService.findAllByAgentRun(agentRunId);
+  @ApiQuery({ name: 'agentRunId', required: false, description: 'Filter by agent run ID (UUID)' })
+  @ApiQuery({ name: 'runId', required: false, description: 'Filter by run ID (UUID) — returns outputs from all agent runs of this run' })
+  async findAll(
+    @Query('agentRunId') agentRunId?: string,
+    @Query('runId') runId?: string,
+  ) {
+    if (agentRunId) {
+      const pipe = new ParseUUIDPipe({ version: '4' });
+      const validated = await pipe.transform(agentRunId, { type: 'query', metatype: String, data: 'agentRunId' });
+      return this.agentOutputsService.findAllByAgentRun(validated);
+    }
+    if (runId) {
+      const pipe = new ParseUUIDPipe({ version: '4' });
+      const validated = await pipe.transform(runId, { type: 'query', metatype: String, data: 'runId' });
+      return this.agentOutputsService.findAllByRun(validated);
+    }
+    throw new BadRequestException('Either agentRunId or runId query parameter is required (must be a valid UUID)');
   }
 
   @Get(':id')

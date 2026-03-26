@@ -4,13 +4,19 @@
 
 import { AppError } from "./errors";
 
-const API_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api/v1";
+// In dev, Next.js rewrites /api/* → backend (localhost:3000/api/*),
+// so we use a relative URL to keep requests same-origin.
+// This makes cookies (SameSite=Lax) work without Secure/None hacks.
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
+
+export { API_URL };
 
 class ApiClient {
   private token: string | null = null;
   private tokenExpiresAt: number | null = null;
   private refreshing: Promise<string | null> | null = null;
+  private refreshFailCount = 0;
+  private static readonly MAX_REFRESH_RETRIES = 2;
 
   private readonly tokenStorageKey = "copalite_token";
   private readonly tokenExpStorageKey = "copalite_token_exp";
@@ -92,6 +98,18 @@ class ApiClient {
     await this.getRefreshPromise();
   }
 
+  private async safeFetch(url: string, init: RequestInit): Promise<Response> {
+    try {
+      return await fetch(url, init);
+    } catch {
+      throw new AppError(
+        "Nao foi possivel conectar ao servidor. Verifique se o backend esta rodando em " +
+          API_URL,
+        { status: 0, code: "NETWORK_ERROR" },
+      );
+    }
+  }
+
   private parseErrorPayload(payload: any, status: number): AppError {
     if (payload?.message && Array.isArray(payload.message)) {
       return new AppError(payload.message.join(", "), {
@@ -123,22 +141,49 @@ class ApiClient {
   }
 
   private async tryRefresh(): Promise<string | null> {
+    if (this.refreshFailCount >= ApiClient.MAX_REFRESH_RETRIES) {
+      this.clearSession();
+      return null;
+    }
+
     try {
       const res = await fetch(`${API_URL}/auth/refresh`, {
         method: "POST",
         credentials: "include",
         cache: "no-store",
       });
-      if (!res.ok) return null;
+      if (!res.ok) {
+        this.refreshFailCount++;
+        if (res.status === 401) {
+          this.clearSession();
+        }
+        return null;
+      }
       const data = await res.json();
       if (data.accessToken) {
+        this.refreshFailCount = 0;
         this.setTokenExpiration(data.accessTokenExpiresAt || null);
         this.setToken(data.accessToken);
         return data.accessToken;
       }
+      this.refreshFailCount++;
       return null;
     } catch {
+      this.refreshFailCount++;
       return null;
+    }
+  }
+
+  private clearSession() {
+    this.token = null;
+    this.tokenExpiresAt = null;
+    this.refreshFailCount = 0;
+    const storage = this.getStorage();
+    if (storage) {
+      storage.removeItem(this.tokenStorageKey);
+      storage.removeItem(this.tokenExpStorageKey);
+      storage.removeItem("auth-storage");
+      storage.removeItem("tenantId");
     }
   }
 
@@ -150,12 +195,12 @@ class ApiClient {
     const newToken = await this.getRefreshPromise();
 
     if (!newToken) {
-      this.setToken(null);
+      this.clearSession();
       if (globalThis.location) globalThis.location.href = "/auth/login";
       throw new AppError("Unauthorized", { status: 401 });
     }
 
-    const retryRes = await fetch(`${API_URL}${path}`, {
+    const retryRes = await this.safeFetch(`${API_URL}${path}`, {
       method,
       headers: {
         "Content-Type": "application/json",
@@ -189,7 +234,7 @@ class ApiClient {
     const token = this.getToken();
     if (token) headers["Authorization"] = `Bearer ${token}`;
 
-    const res = await fetch(`${API_URL}${path}`, {
+    const res = await this.safeFetch(`${API_URL}${path}`, {
       method,
       headers,
       body: body ? JSON.stringify(body) : undefined,
@@ -224,7 +269,7 @@ class ApiClient {
 
   // === AUTH ===
   async login(email: string, password: string) {
-    const res = await fetch(`${API_URL}/auth/login`, {
+    const res = await this.safeFetch(`${API_URL}/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
@@ -236,6 +281,7 @@ class ApiClient {
       throw this.parseErrorPayload(err, res.status);
     }
     const data = await res.json();
+    this.refreshFailCount = 0;
     this.setTokenExpiration(data.accessTokenExpiresAt || null);
     return data;
   }
@@ -250,7 +296,7 @@ class ApiClient {
     } catch {
       /* ignore */
     }
-    this.setToken(null);
+    this.clearSession();
   }
 
   getMe() {
@@ -422,7 +468,7 @@ class ApiClient {
 
   // === SYSTEM HEALTH ===
   getSystemHealth() {
-    return this.get<any>('/system-health/live');
+    return this.get<any>("/system-health/live");
   }
 
   // === TARGETS (Browser Foundation) ===
@@ -430,31 +476,47 @@ class ApiClient {
     const payload = await this.get<any>(`/targets?projectId=${projectId}`);
     return Array.isArray(payload) ? payload : [];
   }
-  createTarget(data: any) { return this.post<any>('/targets', data); }
-  getTarget(id: string) { return this.get<any>(`/targets/${id}`); }
-  updateTarget(id: string, data: any) { return this.patch<any>(`/targets/${id}`, data); }
+  createTarget(data: any) {
+    return this.post<any>("/targets", data);
+  }
+  getTarget(id: string) {
+    return this.get<any>(`/targets/${id}`);
+  }
+  updateTarget(id: string, data: any) {
+    return this.patch<any>(`/targets/${id}`, data);
+  }
 
   // === TARGET SESSIONS ===
   async listSessions(targetId: string) {
-    const payload = await this.get<any>(`/target-sessions?targetId=${targetId}`);
+    const payload = await this.get<any>(
+      `/target-sessions?targetId=${targetId}`,
+    );
     return Array.isArray(payload) ? payload : [];
   }
-  validateSession(data: any) { return this.post<any>('/target-sessions/validate', data); }
+  validateSession(data: any) {
+    return this.post<any>("/target-sessions/validate", data);
+  }
 
   // === BROWSER RUNS ===
   async listBrowserRuns(projectId: string) {
     const payload = await this.get<any>(`/browser-runs?projectId=${projectId}`);
     return Array.isArray(payload) ? payload : [];
   }
-  createBrowserRun(data: any) { return this.post<any>('/browser-runs', data); }
-  getBrowserRun(id: string) { return this.get<any>(`/browser-runs/${id}`); }
+  createBrowserRun(data: any) {
+    return this.post<any>("/browser-runs", data);
+  }
+  getBrowserRun(id: string) {
+    return this.get<any>(`/browser-runs/${id}`);
+  }
 
   // === BROWSER EVIDENCE ===
   async listBrowserEvidence(runId: string) {
     const payload = await this.get<any>(`/browser-evidence/by-run/${runId}`);
     return Array.isArray(payload) ? payload : [];
   }
-  createBrowserEvidence(data: any) { return this.post<any>('/browser-evidence', data); }
+  createBrowserEvidence(data: any) {
+    return this.post<any>("/browser-evidence", data);
+  }
 
   // === BROWSER PROBLEMS ===
   async listBrowserProblems(runId: string) {
@@ -465,16 +527,18 @@ class ApiClient {
     return this.get<any>(`/browser-problems/summary/${runId}`);
   }
   getBrowserProblemDiff(runIdA: string, runIdB: string) {
-    return this.get<any>(`/browser-problems/diff?runIdA=${runIdA}&runIdB=${runIdB}`);
+    return this.get<any>(
+      `/browser-problems/diff?runIdA=${runIdA}&runIdB=${runIdB}`,
+    );
   }
 
   // === BROWSER SPECS ===
   getBrowserSpec(runId: string, baseRunId?: string) {
-    const q = baseRunId ? `?baseRunId=${baseRunId}` : '';
+    const q = baseRunId ? `?baseRunId=${baseRunId}` : "";
     return this.get<any>(`/browser-specs/by-run/${runId}${q}`);
   }
   saveBrowserSpec(runId: string, baseRunId?: string) {
-    const q = baseRunId ? `?baseRunId=${baseRunId}` : '';
+    const q = baseRunId ? `?baseRunId=${baseRunId}` : "";
     return this.post<any>(`/browser-specs/by-run/${runId}/save${q}`, {});
   }
   async listSpecHistory(runId: string) {
@@ -483,15 +547,22 @@ class ApiClient {
   }
 
   // === JOURNEYS ===
-  getAvailableJourneys() { return this.get<any>('/journeys/available'); }
+  getAvailableJourneys() {
+    return this.get<any>("/journeys/available");
+  }
   executeJourney(slug: string, projectId: string, targetId: string) {
-    return this.post<any>(`/journeys/execute/${slug}?projectId=${projectId}&targetId=${targetId}`, {});
+    return this.post<any>(
+      `/journeys/execute/${slug}?projectId=${projectId}&targetId=${targetId}`,
+      {},
+    );
   }
   async listJourneys(projectId: string) {
     const payload = await this.get<any>(`/journeys?projectId=${projectId}`);
     return Array.isArray(payload) ? payload : [];
   }
-  getJourneyRun(id: string) { return this.get<any>(`/journeys/${id}`); }
+  getJourneyRun(id: string) {
+    return this.get<any>(`/journeys/${id}`);
+  }
   async getJourneySteps(id: string) {
     const payload = await this.get<any>(`/journeys/${id}/steps`);
     return Array.isArray(payload) ? payload : [];

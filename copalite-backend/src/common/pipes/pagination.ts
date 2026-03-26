@@ -1,6 +1,6 @@
-import { IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
-import { ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
+import { IsInt, IsOptional, IsString, IsUUID, Max, Min } from 'class-validator';
 
 export class PaginationQueryDto {
   @ApiPropertyOptional({ default: 1, minimum: 1 })
@@ -27,6 +27,30 @@ export class PaginationQueryDto {
   @IsOptional()
   @IsString()
   sortOrder?: 'ASC' | 'DESC' = 'DESC';
+}
+
+export class ProjectPaginationQueryDto extends PaginationQueryDto {
+  @ApiProperty({ description: 'Project ID (UUID)' })
+  @IsUUID()
+  projectId: string;
+}
+
+export class WorkspacePaginationQueryDto extends PaginationQueryDto {
+  @ApiProperty({ description: 'Workspace ID (UUID)' })
+  @IsUUID()
+  workspaceId: string;
+}
+
+export class LogsPaginationQueryDto extends PaginationQueryDto {
+  @ApiPropertyOptional({ description: 'Project ID (UUID)' })
+  @IsOptional()
+  @IsUUID()
+  projectId?: string;
+
+  @ApiPropertyOptional({ description: 'Run ID (UUID)' })
+  @IsOptional()
+  @IsUUID()
+  runId?: string;
 }
 
 export class PaginatedResponseDto<T> {
