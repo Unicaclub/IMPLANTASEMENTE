@@ -196,7 +196,6 @@ class ApiClient {
 
     if (!newToken) {
       this.clearSession();
-      if (globalThis.location) globalThis.location.href = "/auth/login";
       throw new AppError("Unauthorized", { status: 401 });
     }
 

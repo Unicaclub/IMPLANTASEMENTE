@@ -5,7 +5,7 @@ import { SystemHealthService } from './system-health.service';
 import { CreateHealthCheckDto } from './dto';
 import { Public } from '../../common/decorators/public.decorator';
 
-@ApiTags('System Health') @UseGuards(AdminGuard) @Controller('system-health')
+@ApiTags('System Health') @Controller('system-health')
 export class SystemHealthController {
   constructor(private readonly svc: SystemHealthService) {}
 
@@ -14,8 +14,10 @@ export class SystemHealthController {
   async liveCheck() { return this.svc.liveCheck(); }
 
   @ApiBearerAuth()
+  @UseGuards(AdminGuard)
   @Get() async getLatest() { return this.svc.getLatest(); }
 
   @ApiBearerAuth()
+  @UseGuards(AdminGuard)
   @Post('check') async check(@Body() dto: CreateHealthCheckDto) { return this.svc.check(dto); }
 }
