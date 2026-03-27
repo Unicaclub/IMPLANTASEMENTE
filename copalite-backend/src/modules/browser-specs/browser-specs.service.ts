@@ -543,7 +543,11 @@ export class BrowserSpecsService {
   async toPdf(markdown: string, runId: string): Promise<string> {
     const htmlContent = this.markdownToHtml(markdown);
 
-    const browser = await chromium.launch({ headless: true });
+    const browser = await chromium.launch({
+      headless: true,
+      executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined,
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+    });
     const page = await browser.newPage();
     await page.setContent(htmlContent, { waitUntil: 'networkidle' });
 

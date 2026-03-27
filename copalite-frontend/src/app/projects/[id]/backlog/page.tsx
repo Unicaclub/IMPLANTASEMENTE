@@ -225,6 +225,10 @@ export default function BacklogPage() {
             <div className="card p-12 text-center">
               <ListChecks className="mx-auto text-coal-600 mb-3" size={40} />
               <p className="text-coal-400">No backlog items found</p>
+              <p className="text-xs text-coal-500 mt-2 max-w-md mx-auto">
+                Backlog items are generated automatically when a Discovery or Audit pipeline completes.
+                Go to <span className="text-emerald-400">Orchestration</span> to start a pipeline.
+              </p>
             </div>
           ) : (
             <div className="space-y-3">

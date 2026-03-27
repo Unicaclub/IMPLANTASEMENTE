@@ -15,11 +15,12 @@ import { RunEntity } from '../runs/entities/run.entity';
 
 // LLM Agent Execution
 import { AgentExecutionService } from '../llm/agent-execution.service';
+import { LlmProviderFactory } from '../llm/llm-provider.factory';
 import { SourceIngestionService } from '../llm/source-ingestion.service';
 
 // Post-pipeline services
-import { BacklogService } from '../backlog/backlog.service';
 import { AuditsService } from '../audits/audits.service';
+import { BacklogService } from '../backlog/backlog.service';
 import { ReportsService } from '../reports/reports.service';
 
 // Enums
@@ -59,6 +60,7 @@ export class OrchestrationService {
     private readonly dataSource: DataSource,
     private readonly notificationsService: NotificationsService,
     private readonly agentExecutionService: AgentExecutionService,
+    private readonly llmProviderFactory: LlmProviderFactory,
     private readonly sourceIngestionService: SourceIngestionService,
     private readonly configService: ConfigService,
     private readonly backlogService: BacklogService,
@@ -133,11 +135,38 @@ export class OrchestrationService {
 
       firstAgentRun = await this.activateStep(savedRun, steps[0], pipeline[0]);
 
-      // Auto-execute if enabled
-      if (this.autoExecute && firstAgentRun) {
-        this.executeAndAdvance(savedRun.id, firstAgentRun.id).catch((err) => {
-          this.logger.error(`Auto-execute failed for first step: ${err.message}`);
-        });
+      // Always auto-execute the first step when starting a pipeline
+      if (firstAgentRun) {
+        const available = this.llmProviderFactory.getAvailableProviders();
+        if (available.length === 0) {
+          this.logger.error(
+            'No LLM provider configured. Pipeline will not execute. Check OPENAI_API_KEY / ANTHROPIC_API_KEY in .env',
+          );
+          await this.log(
+            savedRun.projectId,
+            savedRun.id,
+            firstAgentRun.id,
+            LogLevel.ERROR,
+            'No LLM provider configured — set OPENAI_API_KEY or ANTHROPIC_API_KEY in .env',
+          );
+          // Fail the step immediately so it doesn't hang forever
+          firstAgentRun.status = RunStatus.FAILED;
+          firstAgentRun.outputSummary =
+            'No LLM provider configured. Set OPENAI_API_KEY or ANTHROPIC_API_KEY in .env file.';
+          firstAgentRun.finishedAt = new Date();
+          await this.agentRunRepo.save(firstAgentRun);
+          steps[0].status = RunStatus.FAILED;
+          steps[0].finishedAt = new Date();
+          steps[0].notes = 'No LLM provider configured';
+          await this.stepRepo.save(steps[0]);
+          savedRun.status = RunStatus.FAILED;
+          savedRun.finishedAt = new Date();
+          await this.runRepo.save(savedRun);
+        } else {
+          this.executeAndAdvance(savedRun.id, firstAgentRun.id).catch((err) => {
+            this.logger.error(`Auto-execute failed for first step: ${err.message}`);
+          });
+        }
       }
     }
 
@@ -228,17 +257,22 @@ export class OrchestrationService {
         await queryRunner.manager.save(currentAgentRun);
       }
 
-      // Save agent output if provided
+      // Save agent output if provided — but skip if the agent execution already created one
       if (dto.structuredData || dto.outputSummary) {
-        const output = queryRunner.manager.create(AgentOutputEntity, {
-          agentRunId: currentAgentRun.id,
-          outputType: OutputType.SUMMARY,
-          title: `Output: ${currentStep.stepName}`,
-          contentMarkdown: dto.outputSummary || '',
-          structuredDataJson: dto.structuredData || null,
-          validationStatus: ValidationStatus.PENDING,
+        const existingOutput = await queryRunner.manager.findOne(AgentOutputEntity, {
+          where: { agentRunId: currentAgentRun.id },
         });
-        await queryRunner.manager.save(output);
+        if (!existingOutput) {
+          const output = queryRunner.manager.create(AgentOutputEntity, {
+            agentRunId: currentAgentRun.id,
+            outputType: OutputType.SUMMARY,
+            title: `Output: ${currentStep.stepName}`,
+            contentMarkdown: dto.outputSummary || '',
+            structuredDataJson: dto.structuredData || null,
+            validationStatus: ValidationStatus.PENDING,
+          });
+          await queryRunner.manager.save(output);
+        }
       }
 
       // Complete the current step
@@ -374,12 +408,10 @@ export class OrchestrationService {
         `Step ${nextStep.stepOrder} started: ${nextStep.stepName} (agent: ${agent.name})`,
       );
 
-      // Auto-execute next step if enabled
-      if (this.autoExecute) {
-        this.executeAndAdvance(runId, savedNextAgentRun.id).catch((err) => {
-          this.logger.error(`Auto-execute failed for step ${nextStep.stepOrder}: ${err.message}`);
-        });
-      }
+      // Always auto-execute next step (pipeline should complete autonomously)
+      this.executeAndAdvance(runId, savedNextAgentRun.id).catch((err) => {
+        this.logger.error(`Auto-execute failed for step ${nextStep.stepOrder}: ${err.message}`);
+      });
 
       return {
         completedStep: currentStep,
@@ -414,20 +446,21 @@ export class OrchestrationService {
       order: { stepOrder: 'ASC' },
     });
 
-    // Attach agent runs to each step
-    const stepsWithAgentRuns = await Promise.all(
-      steps.map(async (step) => {
-        const agentRuns = await this.agentRunRepo.find({
-          where: { runId },
-          relations: ['agent'],
-          order: { createdAt: 'ASC' },
-        });
-        return {
-          ...step,
-          agentRuns: agentRuns.filter((ar) => ar.createdAt >= (step.startedAt || new Date(0))),
-        };
-      }),
-    );
+    // Fetch all agent runs once, then distribute to steps by time window
+    const allAgentRuns = await this.agentRunRepo.find({
+      where: { runId },
+      relations: ['agent'],
+      order: { createdAt: 'ASC' },
+    });
+
+    const stepsWithAgentRuns = steps.map((step) => {
+      return {
+        ...step,
+        agentRuns: allAgentRuns.filter(
+          (ar) => ar.createdAt >= (step.startedAt || new Date(0)),
+        ),
+      };
+    });
 
     const completed = steps.filter(
       (s) => s.status === RunStatus.COMPLETED || s.status === RunStatus.FAILED,
@@ -538,12 +571,10 @@ export class OrchestrationService {
       `Retrying failed step ${failedStep.stepOrder}: ${failedStep.stepName}`,
     );
 
-    // Auto-execute retry if enabled
-    if (this.autoExecute) {
-      this.executeAndAdvance(runId, agentRun.id).catch((err) => {
-        this.logger.error(`Auto-execute retry failed: ${err.message}`);
-      });
-    }
+    // Always auto-execute retry
+    this.executeAndAdvance(runId, agentRun.id).catch((err) => {
+      this.logger.error(`Auto-execute retry failed: ${err.message}`);
+    });
 
     return { retriedStep: failedStep, agentRun };
   }
@@ -599,13 +630,18 @@ export class OrchestrationService {
    * If execution fails, the step is marked as failed but the pipeline is NOT cancelled.
    */
   private async executeAndAdvance(runId: string, agentRunId: string): Promise<void> {
+    this.logger.log(`executeAndAdvance: starting agentRun ${agentRunId} for run ${runId}`);
     try {
       const result = await this.agentExecutionService.execute(agentRunId);
+      this.logger.log(
+        `executeAndAdvance: agentRun ${agentRunId} finished with status=${result.status}`,
+      );
 
       // Auto-advance: call advanceStep with the result
       await this.advanceStep(runId, {
         outputSummary: result.outputSummary || 'Agent execution completed',
         success: result.status === RunStatus.COMPLETED,
+        structuredData: undefined,
         errorMessage:
           result.status === RunStatus.FAILED
             ? result.outputSummary || 'Execution failed'
@@ -613,7 +649,21 @@ export class OrchestrationService {
       });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      this.logger.error(`executeAndAdvance failed for agentRun ${agentRunId}: ${msg}`);
+      this.logger.error(`executeAndAdvance FAILED for agentRun ${agentRunId}: ${msg}`);
+
+      // Log to DB so the error is visible in the dashboard
+      const agentRun = await this.agentRunRepo.findOne({ where: { id: agentRunId } });
+      if (agentRun) {
+        const run = await this.runRepo.findOne({ where: { id: runId } });
+        await this.log(
+          run?.projectId || null,
+          runId,
+          agentRunId,
+          LogLevel.ERROR,
+          `Agent execution failed: ${msg.substring(0, 500)}`,
+        );
+      }
+
       // Try to advance the step as failed so the pipeline doesn't get stuck
       try {
         await this.advanceStep(runId, {

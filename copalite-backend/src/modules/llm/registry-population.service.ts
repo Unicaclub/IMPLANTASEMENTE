@@ -111,6 +111,16 @@ export class RegistryPopulationService {
           .substring(0, 200);
         const layerType = this.resolveLayerType(String(mod['layerType'] ?? ''));
 
+        // Extract files and dependencies arrays from LLM output
+        const rawFiles = mod['files'];
+        const files = Array.isArray(rawFiles)
+          ? rawFiles.map((f: unknown) => String(f)).slice(0, 200)
+          : [];
+        const rawDeps = mod['dependencies'];
+        const dependencies = Array.isArray(rawDeps)
+          ? rawDeps.map((d: unknown) => String(d)).slice(0, 100)
+          : [];
+
         const entity = this.moduleRepo.create({
           projectId: ctx.projectId,
           runId: ctx.runId,
@@ -118,6 +128,8 @@ export class RegistryPopulationService {
           slug,
           layerType,
           description: mod['description'] ? String(mod['description']).substring(0, 5000) : null,
+          files,
+          dependencies,
           status: StatusBase.ACTIVE,
           confidenceStatus: this.resolveConfidence(String(mod['confidenceLevel'] ?? '')),
         });
@@ -208,16 +220,35 @@ export class RegistryPopulationService {
       for (const api of apis) {
         try {
           const path = String(api['path'] ?? '');
-          const method = String(api['method'] ?? 'GET').substring(0, 10);
+          const method = String(api['method'] ?? api['httpMethod'] ?? 'GET').substring(0, 10);
           if (!path) continue;
+
+          // Map requestBody / responseType from LLM output to schema JSON columns
+          const requestBody = api['requestBody'] ?? api['requestSchema'] ?? null;
+          const requestSchemaJson =
+            requestBody != null
+              ? typeof requestBody === 'object'
+                ? (requestBody as Record<string, any>)
+                : { raw: String(requestBody) }
+              : null;
+
+          const responseType = api['responseType'] ?? api['responseSchema'] ?? null;
+          const responseSchemaJson =
+            responseType != null
+              ? typeof responseType === 'object'
+                ? (responseType as Record<string, any>)
+                : { type: String(responseType) }
+              : null;
 
           const entity = this.apiRepo.create({
             projectId: ctx.projectId,
             runId: ctx.runId,
-            name: `${method} ${path}`.substring(0, 180),
+            name: (api['name'] ? String(api['name']) : `${method} ${path}`).substring(0, 180),
             httpMethod: method,
             path,
             authRequired: api['authRequired'] === true,
+            requestSchemaJson,
+            responseSchemaJson,
             description: api['description'] ? String(api['description']).substring(0, 5000) : null,
             status: StatusBase.ACTIVE,
             confidenceStatus: ConfidenceStatus.INFERRED,
@@ -246,9 +277,11 @@ export class RegistryPopulationService {
             routeType,
             path,
             method: route['method'] ? String(route['method']).substring(0, 10) : null,
-            description: route['controllerName']
-              ? `Controller: ${String(route['controllerName'])}`
-              : null,
+            description: route['description']
+              ? String(route['description']).substring(0, 5000)
+              : route['controllerName']
+                ? `Controller: ${String(route['controllerName'])}`
+                : null,
             status: StatusBase.ACTIVE,
             confidenceStatus: ConfidenceStatus.INFERRED,
           });
@@ -274,14 +307,14 @@ export class RegistryPopulationService {
     let count = 0;
     for (const screen of screens) {
       try {
-        const screenName = String(screen['name'] ?? '').substring(0, 180);
+        const screenName = String(screen['screenName'] ?? screen['name'] ?? '').substring(0, 180);
         if (!screenName) continue;
 
         const entity = this.uiRepo.create({
           projectId: ctx.projectId,
           runId: ctx.runId,
           screenName,
-          routePath: screen['route'] ? String(screen['route']) : null,
+          routePath: screen['routePath'] ?? screen['route'] ? String(screen['routePath'] ?? screen['route']) : null,
           description: screen['description']
             ? String(screen['description']).substring(0, 5000)
             : null,

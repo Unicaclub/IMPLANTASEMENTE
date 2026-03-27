@@ -1,10 +1,12 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { ProjectAccessGuard } from '../../common/guards/project-access.guard';
 import { ModulesRegistryService } from './modules-registry.service';
 import { CreateModuleRegistryDto, UpdateModuleRegistryDto } from './dto';
 
 @ApiTags('Modules Registry')
 @ApiBearerAuth()
+@UseGuards(ProjectAccessGuard)
 @Controller('modules-registry')
 export class ModulesRegistryController {
   constructor(private readonly service: ModulesRegistryService) {}

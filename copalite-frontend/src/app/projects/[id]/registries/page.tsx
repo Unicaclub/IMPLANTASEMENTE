@@ -104,8 +104,35 @@ export default function RegistriesPage() {
                 <div className="flex items-center gap-2">
                   {expanded.has(item.id) ? <ChevronDown size={14} className="text-coal-500" /> : <ChevronRight size={14} className="text-coal-500" />}
                   <span className="text-sm font-medium text-coal-100">{item.name || item.entityName}</span>
+                  {item.files?.length > 0 && <span className="text-[10px] text-coal-500">{item.files.length} files</span>}
+                  {item.dependencies?.length > 0 && <span className="text-[10px] text-violet-400/60">{item.dependencies.length} deps</span>}
                 </div>
-                {expanded.has(item.id) && item.slug && <p className="text-[11px] text-coal-500 font-mono mt-1 ml-6">{item.slug}</p>}
+                {expanded.has(item.id) && (
+                  <div className="ml-6 mt-2 space-y-2">
+                    {item.slug && <p className="text-[11px] text-coal-500 font-mono">{item.slug}</p>}
+                    {item.files?.length > 0 && (
+                      <div>
+                        <p className="text-[10px] text-coal-500 font-semibold uppercase mb-1">Files</p>
+                        <div className="flex flex-wrap gap-1">
+                          {item.files.slice(0, 20).map((f: string, i: number) => (
+                            <span key={i} className="text-[10px] font-mono bg-coal-900 px-1.5 py-0.5 rounded text-coal-400">{f}</span>
+                          ))}
+                          {item.files.length > 20 && <span className="text-[10px] text-coal-500">+{item.files.length - 20} more</span>}
+                        </div>
+                      </div>
+                    )}
+                    {item.dependencies?.length > 0 && (
+                      <div>
+                        <p className="text-[10px] text-coal-500 font-semibold uppercase mb-1">Dependencies</p>
+                        <div className="flex flex-wrap gap-1">
+                          {item.dependencies.map((d: string, i: number) => (
+                            <span key={i} className="text-[10px] font-mono bg-violet-500/10 px-1.5 py-0.5 rounded text-violet-400">{d}</span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </td>
               <td className="py-3 px-4">
                 {item.layerType && <span className="badge-neutral text-[10px]">{item.layerType}</span>}

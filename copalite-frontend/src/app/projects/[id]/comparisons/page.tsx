@@ -116,7 +116,11 @@ export default function ComparisonsPage() {
             <div className="card p-12 text-center">
               <GitCompare className="mx-auto text-coal-600 mb-3" size={40} />
               <p className="text-coal-400">Nenhuma comparação encontrada</p>
-              <p className="text-xs text-coal-500 mt-1">Execute uma run de comparação para confrontar artefatos</p>
+              <p className="text-xs text-coal-500 mt-1 max-w-md mx-auto">
+                Comparações são geradas ao executar um pipeline do tipo <span className="text-sky-400">Comparison</span>.
+                Primeiro execute um <span className="text-emerald-400">Discovery</span> para ter dados base,
+                depois inicie uma <span className="text-sky-400">Comparison</span> para confrontar.
+              </p>
             </div>
           ) : (
             <div className="space-y-3">

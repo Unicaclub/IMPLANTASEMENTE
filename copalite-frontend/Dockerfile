@@ -8,10 +8,12 @@ ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 RUN npm run build
 
 FROM node:18-alpine
+RUN addgroup -g 1001 app && adduser -D -u 1001 -G app app
 WORKDIR /app
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package.json .
-COPY --from=builder /app/public ./public
+COPY --from=builder --chown=app:app /app/.next ./.next
+COPY --from=builder --chown=app:app /app/node_modules ./node_modules
+COPY --from=builder --chown=app:app /app/package.json .
+COPY --from=builder --chown=app:app /app/public ./public
+USER app
 EXPOSE 3001
 CMD ["npm", "start"]

@@ -1,9 +1,10 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { ProjectAccessGuard } from '../../common/guards/project-access.guard';
 import { CodebaseMapService } from './codebase-map.service';
 import { CreateCodebaseArtifactDto, UpdateCodebaseArtifactDto } from './dto';
 
-@ApiTags('Codebase Map') @ApiBearerAuth() @Controller('codebase-map')
+@ApiTags('Codebase Map') @ApiBearerAuth() @UseGuards(ProjectAccessGuard) @Controller('codebase-map')
 export class CodebaseMapController {
   constructor(private readonly svc: CodebaseMapService) {}
   @Post() async create(@Body() dto: CreateCodebaseArtifactDto) { return this.svc.create(dto); }

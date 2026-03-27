@@ -113,7 +113,11 @@ export class BrowserAgentService {
 
     try {
       this.logger.log(`Launching Chromium for run ${runId} → ${target.baseUrl}`);
-      browser = await chromium.launch({ headless: true });
+      browser = await chromium.launch({
+        headless: true,
+        executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined,
+        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+      });
       const page = await browser.newPage();
 
       // === PHASE 1: LOGIN ===
@@ -215,7 +219,9 @@ export class BrowserAgentService {
     let creds: Record<string, unknown> = {};
     if (target.credentialsJson) {
       try {
-        const raw = target.credentialsJson as Record<string, unknown>;
+        const raw = typeof target.credentialsJson === 'string'
+          ? JSON.parse(target.credentialsJson)
+          : (target.credentialsJson as Record<string, unknown>);
         if (raw._enc && typeof raw._enc === 'string') {
           creds = decryptCredentials(raw._enc);
           this.logger.log('Credentials decrypted successfully');
@@ -241,7 +247,7 @@ export class BrowserAgentService {
     evCount++;
 
     try {
-      await page.goto(loginUrl, { waitUntil: 'networkidle', timeout: NAVIGATION_TIMEOUT });
+      await page.goto(loginUrl, { waitUntil: 'domcontentloaded', timeout: NAVIGATION_TIMEOUT });
     } catch (err: unknown) {
       return { success: false, error: `Login page nao carregou: ${err instanceof Error ? err.message : err}`, stepIndex: step, evidences: evCount };
     }
@@ -260,8 +266,8 @@ export class BrowserAgentService {
 
       step++;
       await Promise.all([
-        page.waitForURL(url => !url.toString().includes('/auth/login'), { timeout: 15_000 }),
-        page.click('button[type="submit"], button:has-text("Entrar"), button:has-text("Login")'),
+        page.waitForURL(url => !url.toString().includes('/auth/login'), { timeout: 30_000 }),
+        page.click('button[type="submit"], button:has-text("Sign in"), button:has-text("Entrar"), button:has-text("Login")'),
       ]);
 
       if (page.url().includes('/auth/login')) {
@@ -320,7 +326,7 @@ export class BrowserAgentService {
     let title = '';
 
     try {
-      const response = await page.goto(fullUrl, { waitUntil: 'networkidle', timeout: NAVIGATION_TIMEOUT });
+      const response = await page.goto(fullUrl, { waitUntil: 'domcontentloaded', timeout: NAVIGATION_TIMEOUT });
       httpStatus = response?.status() ?? null;
       title = await page.title();
 
@@ -406,7 +412,7 @@ export class BrowserAgentService {
     const registriesUrl = this.resolveUrl(target.baseUrl, `/projects/${projectId}/registries?tab=modules`);
 
     try {
-      await page.goto(registriesUrl, { waitUntil: 'networkidle', timeout: NAVIGATION_TIMEOUT });
+      await page.goto(registriesUrl, { waitUntil: 'domcontentloaded', timeout: NAVIGATION_TIMEOUT });
 
       // Click on "Routes" tab
       await this.saveEvidence(runId, step, EvidenceKind.ACTION, '/registries', 'click Routes tab', null, { interaction: 'tab_switch' });

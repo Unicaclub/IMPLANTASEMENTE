@@ -22,7 +22,11 @@ export default function Sidebar({ projectId, projectName }: SidebarProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const isActive = (path: string) => pathname === path || pathname?.startsWith(path + '/');
+  const isActive = (path: string) => {
+    // Strip query params for comparison — registry tabs use ?tab=xxx
+    const cleanPath = path.split('?')[0];
+    return pathname === cleanPath || pathname === path || pathname?.startsWith(cleanPath + '/');
+  };
 
   const mainNav = [
     { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },

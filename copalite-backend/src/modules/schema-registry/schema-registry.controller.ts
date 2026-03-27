@@ -1,9 +1,10 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { ProjectAccessGuard } from '../../common/guards/project-access.guard';
 import { SchemaRegistryService } from './schema-registry.service';
 import { CreateSchemaRegistryDto, UpdateSchemaRegistryDto, CreateSchemaFieldDto } from './dto';
 
-@ApiTags('Schema Registry') @ApiBearerAuth() @Controller('schema-registry')
+@ApiTags('Schema Registry') @ApiBearerAuth() @UseGuards(ProjectAccessGuard) @Controller('schema-registry')
 export class SchemaRegistryController {
   constructor(private readonly svc: SchemaRegistryService) {}
   @Post() async create(@Body() dto: CreateSchemaRegistryDto) { return this.svc.create(dto); }

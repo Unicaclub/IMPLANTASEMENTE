@@ -1,3 +1,15 @@
+jest.mock('playwright', () => ({
+  chromium: {
+    launch: jest.fn().mockResolvedValue({
+      newPage: jest.fn().mockResolvedValue({
+        setContent: jest.fn(),
+        pdf: jest.fn().mockResolvedValue(Buffer.from('fake-pdf')),
+        close: jest.fn(),
+      }),
+      close: jest.fn(),
+    }),
+  },
+}));
 jest.mock('typeorm', () => {
   const noop = () => () => undefined;
   return {

@@ -162,6 +162,18 @@ export class PromptBuilderService {
   }
 
   private buildArchitectPrompt(sourceContext: string): string {
+    const schema = JSON.stringify({
+      modules: [{
+        name: 'string',
+        layerType: 'frontend|backend|database|infra|docs|cross_cutting',
+        description: 'string',
+        files: ['path/to/file1.ts', 'path/to/file2.ts'],
+        dependencies: ['other-module-name', 'external-package'],
+        confidenceLevel: 'confirmed|inferred',
+      }],
+      summary: 'string',
+    }, null, 2);
+
     return [
       '## Instructions',
       'Analyze the project architecture and map ALL modules, layers, and dependencies.',
@@ -173,11 +185,25 @@ export class PromptBuilderService {
       '- Dependencies between modules',
       '- Design patterns used',
       '',
+      'For each module, you MUST include:',
+      '- `files`: array of file paths that belong to this module (relative to repo root)',
+      '- `dependencies`: array of other module names or packages this module depends on',
+      '',
+      `CRITICAL: Respond with ONLY valid JSON matching this schema:\n\`\`\`json\n${schema}\n\`\`\``,
+      '',
       sourceContext,
     ].join('\n');
   }
 
   private buildSchemaMapperPrompt(sourceContext: string): string {
+    const schema = JSON.stringify({
+      schemas: [{
+        entityName: 'string', tableName: 'string', description: 'string',
+        fields: [{ name: 'string', dataType: 'string', nullable: false, isPrimaryKey: false, referencesTable: 'string|null' }],
+      }],
+      summary: 'string',
+    }, null, 2);
+
     return [
       '## Instructions',
       'Analyze the database schema of this project.',
@@ -191,32 +217,53 @@ export class PromptBuilderService {
       'Map EVERY table with its fields, types, primary keys, and foreign keys.',
       'Only include tables/schemas that actually exist in the code.',
       '',
+      `CRITICAL: Respond with ONLY valid JSON matching this schema:\n\`\`\`json\n${schema}\n\`\`\``,
+      '',
       sourceContext,
     ].join('\n');
   }
 
   private buildApiAnalyzerPrompt(sourceContext: string): string {
+    const schema = JSON.stringify({
+      apis: [{ name: 'string', httpMethod: 'GET|POST|PUT|PATCH|DELETE', path: 'string', description: 'string', authRequired: true }],
+      routes: [{ path: 'string', routeType: 'frontend|backend|internal_action', method: 'string', controllerName: 'string', description: 'string' }],
+      summary: 'string',
+    }, null, 2);
+
     return [
       '## Instructions',
-      'Map ALL API endpoints in this project.',
+      'Map ALL API endpoints, public interfaces, and service boundaries in this project.',
       '',
       'Look for:',
-      '- Controller files with route decorators (@Get, @Post, etc.)',
+      '- Controller files with route decorators (@Get, @Post, @Controller, etc.)',
       '- Express/Fastify/Django/Flask route definitions',
       '- OpenAPI/Swagger specs',
-      '- Middleware and guards',
+      '- Middleware, guards, and interceptors',
       '',
-      'For each endpoint, identify: method, path, description, auth requirements.',
-      'Only include endpoints that actually exist in the code.',
+      '**If this is a framework or library (no application-level controllers/routes):**',
+      '- Map the PUBLIC API surface: exported functions, classes, decorators, and interfaces',
+      '- Map module entry points (index.ts, package.json exports)',
+      '- Map internal service boundaries between packages/modules',
+      '- Treat each exported decorator or utility as an "api" entry with httpMethod set to the most relevant value or "GET" as default',
+      '- Treat each package or module entry point as a "route" with routeType "internal_action"',
+      '',
+      'IMPORTANT: NEVER return empty arrays. If there are no HTTP endpoints, analyze the library\'s public API surface instead.',
+      '',
+      `CRITICAL: Respond with ONLY valid JSON matching this schema:\n\`\`\`json\n${schema}\n\`\`\``,
       '',
       sourceContext,
     ].join('\n');
   }
 
   private buildUiInspectorPrompt(sourceContext: string): string {
+    const schema = JSON.stringify({
+      screens: [{ screenName: 'string', routePath: 'string', componentName: 'string', stateType: 'page|modal|table|form|dashboard|detail_view', description: 'string' }],
+      summary: 'string',
+    }, null, 2);
+
     return [
       '## Instructions',
-      'Map ALL UI screens, pages, and components.',
+      'Map ALL UI screens, pages, components, and visual interfaces in this project.',
       '',
       'Look for:',
       '- Page files (Next.js pages, React Router, Vue Router)',
@@ -224,8 +271,19 @@ export class PromptBuilderService {
       '- Navigation/routing configuration',
       '- State management (Redux, Zustand, etc.)',
       '',
-      'For each screen: name, route, description, state type, key components.',
-      'Only include screens that actually exist in the code.',
+      '**If this is a framework, library, or backend-only project (no frontend pages):**',
+      '- Map configuration interfaces (CLI commands, config schemas)',
+      '- Map example/sample applications if they exist in the repo',
+      '- Map any admin panels, dashboards, or dev tools included',
+      '- Map documentation pages or playground interfaces',
+      '- If truly no UI exists, create entries describing the project\'s interface points:',
+      '  - CLI interface as a "screen" with stateType "form"',
+      '  - Configuration files as "screen" with stateType "form"',
+      '  - README/docs as "screen" with stateType "page"',
+      '',
+      'IMPORTANT: NEVER return empty arrays. If there are no traditional UI screens, describe the project\'s interaction surfaces instead.',
+      '',
+      `CRITICAL: Respond with ONLY valid JSON matching this schema:\n\`\`\`json\n${schema}\n\`\`\``,
       '',
       sourceContext,
     ].join('\n');
@@ -250,6 +308,11 @@ export class PromptBuilderService {
   }
 
   private buildEvidenceCollectorPrompt(sourceContext: string): string {
+    const schema = JSON.stringify({
+      evidence: [{ title: 'string', evidenceType: 'code_excerpt|document_excerpt|observed_route|screenshot_note|api_trace|manual_note', content: 'string', sourceFile: 'string', relatedModule: 'string|null' }],
+      summary: 'string',
+    }, null, 2);
+
     return [
       '## Instructions',
       'Collect technical evidence from this codebase.',
@@ -260,6 +323,8 @@ export class PromptBuilderService {
       '- Testing patterns',
       '- Documentation found',
       '- Notable code snippets that reveal architecture decisions',
+      '',
+      `CRITICAL: Respond with ONLY valid JSON matching this schema:\n\`\`\`json\n${schema}\n\`\`\``,
       '',
       sourceContext,
     ].join('\n');
