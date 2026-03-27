@@ -6,7 +6,9 @@ COPY . .
 RUN npm run build
 
 FROM node:18-alpine
-RUN apk add --no-cache git
+RUN apk add --no-cache git chromium nss freetype harfbuzz ca-certificates ttf-freefont
+ENV PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium-browser
+ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 RUN addgroup -g 1001 app && adduser -D -u 1001 -G app app
 WORKDIR /app
 COPY --from=builder --chown=app:app /app/dist ./dist
