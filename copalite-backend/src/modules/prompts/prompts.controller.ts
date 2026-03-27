@@ -1,10 +1,12 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { AdminGuard } from '../../common/guards/admin.guard';
 import { PromptsService } from './prompts.service';
 import { CreatePromptDto, UpdatePromptDto } from './dto';
 
 @ApiTags('Prompts')
 @ApiBearerAuth()
+@UseGuards(AdminGuard)
 @Controller('prompts')
 export class PromptsController {
   constructor(private readonly promptsService: PromptsService) {}

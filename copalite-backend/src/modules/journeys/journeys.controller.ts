@@ -1,11 +1,13 @@
-import { Controller, Delete, Get, Param, ParseUUIDPipe, Post, Query } from '@nestjs/common';
+import { Controller, Delete, Get, Param, ParseUUIDPipe, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { ProjectAccessGuard } from '../../common/guards/project-access.guard';
 import { ExecutionLockService } from '../../common/utils/execution-lock.service';
 import { ArtifactCleanupService } from '../../common/utils/artifact-cleanup.service';
 import { JourneyRunnerService } from './journey-runner.service';
 
 @ApiTags('Journeys')
 @ApiBearerAuth()
+@UseGuards(ProjectAccessGuard)
 @Controller('journeys')
 export class JourneysController {
   constructor(

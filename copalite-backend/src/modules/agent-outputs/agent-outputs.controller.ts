@@ -1,10 +1,12 @@
-import { BadRequestException, Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { ProjectAccessGuard } from '../../common/guards/project-access.guard';
 import { AgentOutputsService } from './agent-outputs.service';
 import { CreateAgentOutputDto, UpdateAgentOutputValidationDto } from './dto';
 
 @ApiTags('Agent Outputs')
 @ApiBearerAuth()
+@UseGuards(ProjectAccessGuard)
 @Controller('agent-outputs')
 export class AgentOutputsController {
   constructor(private readonly agentOutputsService: AgentOutputsService) {}

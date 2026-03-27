@@ -1,10 +1,12 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { ProjectAccessGuard } from '../../common/guards/project-access.guard';
 import { AgentRunsService } from './agent-runs.service';
 import { CreateAgentRunDto, UpdateAgentRunStatusDto } from './dto';
 
 @ApiTags('Agent Runs')
 @ApiBearerAuth()
+@UseGuards(ProjectAccessGuard)
 @Controller('agent-runs')
 export class AgentRunsController {
   constructor(private readonly agentRunsService: AgentRunsService) {}

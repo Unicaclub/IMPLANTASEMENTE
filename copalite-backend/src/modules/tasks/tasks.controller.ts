@@ -8,14 +8,17 @@ import {
   Patch,
   Post,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ProjectAccessGuard } from '../../common/guards/project-access.guard';
 import { ProjectPaginationQueryDto } from '../../common/pipes/pagination';
 import { CreateTaskDto, CreateTaskFromBacklogDto, UpdateTaskDto } from './dto';
 import { TasksService } from './tasks.service';
 
 @ApiTags('Tasks')
 @ApiBearerAuth()
+@UseGuards(ProjectAccessGuard)
 @Controller('tasks')
 export class TasksController {
   constructor(private readonly svc: TasksService) {}

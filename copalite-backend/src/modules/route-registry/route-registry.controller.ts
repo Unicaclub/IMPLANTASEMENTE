@@ -1,9 +1,10 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { ProjectAccessGuard } from '../../common/guards/project-access.guard';
 import { RouteRegistryService } from './route-registry.service';
 import { CreateRouteRegistryDto, UpdateRouteRegistryDto } from './dto';
 
-@ApiTags('Route Registry') @ApiBearerAuth() @Controller('route-registry')
+@ApiTags('Route Registry') @ApiBearerAuth() @UseGuards(ProjectAccessGuard) @Controller('route-registry')
 export class RouteRegistryController {
   constructor(private readonly service: RouteRegistryService) {}
   @Post() async create(@Body() dto: CreateRouteRegistryDto) { return this.service.create(dto); }

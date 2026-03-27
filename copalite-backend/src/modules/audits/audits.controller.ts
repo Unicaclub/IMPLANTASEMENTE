@@ -1,10 +1,12 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { ProjectAccessGuard } from '../../common/guards/project-access.guard';
 import { AuditsService } from './audits.service';
 import { CreateAuditDto, UpdateAuditDto } from './dto';
 
 @ApiTags('Audits')
 @ApiBearerAuth()
+@UseGuards(ProjectAccessGuard)
 @Controller('audits')
 export class AuditsController {
   constructor(private readonly svc: AuditsService) {}

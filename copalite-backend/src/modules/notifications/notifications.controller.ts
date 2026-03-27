@@ -1,11 +1,13 @@
-import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { ProjectAccessGuard } from '../../common/guards/project-access.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { NotificationsService } from './notifications.service';
 import { CreateNotificationDto } from './dto';
 
 @ApiTags('Notifications')
 @ApiBearerAuth()
+@UseGuards(ProjectAccessGuard)
 @Controller('notifications')
 export class NotificationsController {
   constructor(private readonly svc: NotificationsService) {}

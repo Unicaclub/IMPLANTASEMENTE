@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ProjectEntity } from '../modules/projects/entities/project.entity';
 import { WorkspaceMemberEntity } from '../modules/workspaces/entities/workspace-member.entity';
 import { ProjectAccessGuard } from './guards/project-access.guard';
+import { RolesGuard } from './guards/roles.guard';
 import { ExecutionLockService } from './utils/execution-lock.service';
 import { ArtifactCleanupService } from './utils/artifact-cleanup.service';
 import { OwnershipService } from './utils/ownership.service';
@@ -12,7 +13,7 @@ import { OwnershipService } from './utils/ownership.service';
   imports: [
     TypeOrmModule.forFeature([ProjectEntity, WorkspaceMemberEntity]),
   ],
-  providers: [ProjectAccessGuard, ExecutionLockService, ArtifactCleanupService, OwnershipService],
-  exports: [ProjectAccessGuard, ExecutionLockService, ArtifactCleanupService, OwnershipService, TypeOrmModule],
+  providers: [ProjectAccessGuard, RolesGuard, ExecutionLockService, ArtifactCleanupService, OwnershipService],
+  exports: [ProjectAccessGuard, RolesGuard, ExecutionLockService, ArtifactCleanupService, OwnershipService, TypeOrmModule],
 })
 export class SharedModule {}

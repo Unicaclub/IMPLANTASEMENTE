@@ -1,11 +1,13 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { ProjectAccessGuard } from '../../common/guards/project-access.guard';
 import { DocumentsService } from './documents.service';
 import { CreateDocumentDto, UpdateDocumentDto, CreateDocumentVersionDto } from './dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 
 @ApiTags('Documents')
 @ApiBearerAuth()
+@UseGuards(ProjectAccessGuard)
 @Controller('documents')
 export class DocumentsController {
   constructor(private readonly documentsService: DocumentsService) {}

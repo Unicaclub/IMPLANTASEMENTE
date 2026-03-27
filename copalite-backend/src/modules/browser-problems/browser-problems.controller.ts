@@ -1,9 +1,11 @@
-import { Controller, Get, Param, ParseUUIDPipe, Query } from '@nestjs/common';
+import { Controller, Get, Param, ParseUUIDPipe, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { ProjectAccessGuard } from '../../common/guards/project-access.guard';
 import { BrowserProblemsService } from './browser-problems.service';
 
 @ApiTags('Browser Problems')
 @ApiBearerAuth()
+@UseGuards(ProjectAccessGuard)
 @Controller('browser-problems')
 export class BrowserProblemsController {
   constructor(private readonly svc: BrowserProblemsService) {}

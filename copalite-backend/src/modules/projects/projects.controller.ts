@@ -7,6 +7,8 @@ import { ProjectsService } from './projects.service';
 
 @ApiTags('Projects')
 @ApiBearerAuth()
+// RBAC: Uses service-level validation (workspace membership checked via userId in each method).
+// Cannot use ProjectAccessGuard at class level because listing is workspace-scoped, not project-scoped.
 @Controller('projects')
 export class ProjectsController {
   constructor(private readonly projectsService: ProjectsService) {}

@@ -30,7 +30,7 @@ export class AuthService {
     this.refreshSecret = this.configService.getOrThrow<string>('JWT_REFRESH_SECRET');
     this.refreshExpiration = '7d';
     this.refreshExpirationMs = 7 * 24 * 60 * 60 * 1000;
-    this.accessExpirationSeconds = 15 * 60;
+    this.accessExpirationSeconds = 60 * 60;
   }
 
   async register(dto: RegisterDto) {

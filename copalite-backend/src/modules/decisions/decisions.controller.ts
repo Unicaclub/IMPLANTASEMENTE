@@ -1,11 +1,13 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { ProjectAccessGuard } from '../../common/guards/project-access.guard';
 import { DecisionsService } from './decisions.service';
 import { CreateDecisionDto, UpdateDecisionDto } from './dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 
 @ApiTags('Decisions')
 @ApiBearerAuth()
+@UseGuards(ProjectAccessGuard)
 @Controller('decisions')
 export class DecisionsController {
   constructor(private readonly decisionsService: DecisionsService) {}
