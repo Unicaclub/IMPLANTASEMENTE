@@ -6,7 +6,7 @@ COPY . .
 RUN npm run build
 
 FROM node:18-alpine
-RUN apk add --no-cache git chromium nss freetype harfbuzz ca-certificates ttf-freefont
+RUN apk add --no-cache git chromium nss freetype harfbuzz ca-certificates ttf-freefont postgresql-client
 ENV PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium-browser
 ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 RUN addgroup -g 1001 app && adduser -D -u 1001 -G app app
@@ -15,7 +15,9 @@ COPY --from=builder --chown=app:app /app/dist ./dist
 COPY --from=builder --chown=app:app /app/node_modules ./node_modules
 COPY --from=builder --chown=app:app /app/package.json .
 COPY --from=builder --chown=app:app /app/migrations ./migrations
+COPY --from=builder --chown=app:app /app/scripts ./scripts
+RUN chmod +x scripts/*.sh 2>/dev/null || true
 RUN mkdir -p artifacts && chown app:app artifacts
 USER app
 EXPOSE 3000
-CMD ["node", "dist/main.js"]
+CMD ["sh", "-c", "sh scripts/run-migrations.sh && node dist/main.js"]
