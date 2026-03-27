@@ -6,6 +6,7 @@ COPY . .
 RUN npm run build
 
 FROM node:18-alpine
+RUN apk add --no-cache git
 RUN addgroup -g 1001 app && adduser -D -u 1001 -G app app
 WORKDIR /app
 COPY --from=builder --chown=app:app /app/dist ./dist
