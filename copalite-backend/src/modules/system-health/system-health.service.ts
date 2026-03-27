@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { SystemHealthEntity } from './entities/system-health.entity';
@@ -13,6 +14,7 @@ export class SystemHealthService {
     @InjectRepository(AgentEntity) private readonly agentRepo: Repository<AgentEntity>,
     @InjectRepository(RunEntity) private readonly runRepo: Repository<RunEntity>,
     private readonly dataSource: DataSource,
+    private readonly configService: ConfigService,
   ) {}
 
   async check(dto: CreateHealthCheckDto) { return this.repo.save(this.repo.create(dto)); }
@@ -60,7 +62,35 @@ export class SystemHealthService {
       }
     } catch { /* ignore */ }
 
-    const overallStatus = !dbConnected ? 'unhealthy' : dbLatencyMs > 500 ? 'degraded' : 'healthy';
+    // Redis check
+    let redisConnected = false;
+    let redisLatencyMs = 0;
+    const redisHost = this.configService.get<string>('REDIS_HOST');
+    if (redisHost) {
+      try {
+        const Redis = require('ioredis');
+        const redis = new Redis({
+          host: redisHost,
+          port: this.configService.get<number>('REDIS_PORT', 6379),
+          password: this.configService.get<string>('REDIS_PASSWORD', ''),
+          connectTimeout: 3000,
+          lazyConnect: true,
+        });
+        const redisStart = Date.now();
+        await redis.connect();
+        await redis.ping();
+        redisLatencyMs = Date.now() - redisStart;
+        redisConnected = true;
+        await redis.disconnect();
+      } catch {
+        redisConnected = false;
+      }
+    }
+
+    const overallStatus = !dbConnected ? 'unhealthy'
+      : (redisHost && !redisConnected) ? 'degraded'
+      : dbLatencyMs > 500 ? 'degraded'
+      : 'healthy';
 
     return {
       status: overallStatus,
@@ -70,6 +100,11 @@ export class SystemHealthService {
         connected: dbConnected,
         latencyMs: dbLatencyMs,
       },
+      redis: redisHost ? {
+        configured: true,
+        connected: redisConnected,
+        latencyMs: redisLatencyMs,
+      } : { configured: false },
       memory: {
         rss: Math.round(mem.rss / 1024 / 1024),
         heapUsed: Math.round(mem.heapUsed / 1024 / 1024),

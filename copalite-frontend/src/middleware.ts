@@ -23,8 +23,13 @@ export function middleware(request: NextRequest) {
 
   if (!hasToken) {
     const loginUrl = new URL("/auth/login", request.url);
-    // Sanitize redirect param — only allow relative paths starting with /
-    if (pathname.startsWith("/") && !pathname.includes("//") && !pathname.includes("..")) {
+    // Sanitize redirect param — only allow safe relative paths
+    const isSafe = pathname.startsWith("/")
+      && !pathname.startsWith("//")
+      && !pathname.includes("..")
+      && !pathname.includes("\\")
+      && !/^\/+[a-zA-Z]:/.test(pathname);
+    if (isSafe) {
       loginUrl.searchParams.set("redirect", pathname);
     }
     return NextResponse.redirect(loginUrl);

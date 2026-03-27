@@ -18,16 +18,23 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const request = ctx.getRequest();
 
     const isHttpException = exception instanceof HttpException;
+
+    // Handle Express body-parser errors (PayloadTooLargeError, etc.)
+    const isBodyParserError = exception instanceof Error && 'status' in exception && 'type' in exception;
     const status = isHttpException
       ? exception.getStatus()
-      : HttpStatus.INTERNAL_SERVER_ERROR;
+      : isBodyParserError
+        ? (exception as any).status || HttpStatus.BAD_REQUEST
+        : HttpStatus.INTERNAL_SERVER_ERROR;
 
     const exceptionResponse = isHttpException ? exception.getResponse() : null;
     const message = isHttpException
       ? (typeof exceptionResponse === 'object' && exceptionResponse !== null
           ? (exceptionResponse as Record<string, unknown>).message || exception.message
           : exception.message)
-      : 'Internal server error';
+      : isBodyParserError
+        ? (exception as Error).message
+        : 'Internal server error';
 
     // Log only unexpected errors as errors; known HTTP exceptions as warnings
     if (isHttpException && status < 500) {

@@ -63,7 +63,14 @@ export default function ProjectDetailPage() {
       a.download = `copalite-report-${projectId.slice(0, 8)}.json`;
       a.click();
       URL.revokeObjectURL(url);
-    } catch (err) { console.error('Export failed:', err); }
+    } catch (err: any) {
+      console.error('Export failed:', err);
+      if (err?.status === 401 && globalThis.location) {
+        globalThis.location.href = '/auth/login';
+        return;
+      }
+      alert('Export falhou. Tente novamente.');
+    }
   }
 
   if (!dashboard) return null;
