@@ -125,12 +125,33 @@ services:
     networks:
       - copalite-net
 
-  certbot:
+  # Initial cert: docker compose --profile certbot-init run --rm certbot-init
+  certbot-init:
     image: certbot/certbot:latest
-    container_name: copalite-certbot
+    container_name: copalite-certbot-init
     volumes:
       - certbot_webroot:/var/www/certbot
       - certbot_certs:/etc/letsencrypt
+    entrypoint: >
+      certbot certonly --webroot --webroot-path=/var/www/certbot
+      --email ${CERTBOT_EMAIL:-admin@example.com} --agree-tos --no-eff-email
+      -d ${DOMAIN:-localhost}
+    networks:
+      - copalite-net
+    profiles:
+      - certbot-init
+
+  # Auto-renewal: runs every 12h, renews if cert expires within 30 days
+  certbot:
+    image: certbot/certbot:latest
+    container_name: copalite-certbot
+    restart: unless-stopped
+    volumes:
+      - certbot_webroot:/var/www/certbot
+      - certbot_certs:/etc/letsencrypt
+    entrypoint: >
+      sh -c "trap exit TERM; while :; do certbot renew --webroot --webroot-path=/var/www/certbot
+      --quiet; sleep 12h & wait $${!}; done"
     networks:
       - copalite-net
 
