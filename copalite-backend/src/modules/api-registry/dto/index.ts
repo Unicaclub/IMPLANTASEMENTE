@@ -1,4 +1,4 @@
-import { IsBoolean, IsEnum, IsOptional, IsString, IsUUID, Length } from 'class-validator';
+import { IsBoolean, IsEnum, IsOptional, IsString, IsUUID, Length, MaxLength } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { ConfidenceStatus, StatusBase } from '../../../common/enums';
 
@@ -9,8 +9,8 @@ export class CreateApiRegistryDto {
   @ApiPropertyOptional() @IsOptional() @IsUUID() routeId?: string;
   @ApiPropertyOptional() @IsOptional() @IsUUID() sourceId?: string;
   @ApiProperty() @IsString() @Length(3, 180) name: string;
-  @ApiProperty() @IsString() httpMethod: string;
-  @ApiProperty() @IsString() path: string;
+  @ApiProperty() @IsString() @MaxLength(100) httpMethod: string;
+  @ApiProperty() @IsString() @MaxLength(2000) path: string;
   @ApiPropertyOptional() @IsOptional() @IsBoolean() authRequired?: boolean;
   @ApiPropertyOptional() @IsOptional() requestSchemaJson?: Record<string, any>;
   @ApiPropertyOptional() @IsOptional() responseSchemaJson?: Record<string, any>;

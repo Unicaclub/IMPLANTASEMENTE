@@ -12,9 +12,9 @@ export class UiRegistryService {
     @InjectRepository(UiActionEntity) private readonly actionRepo: Repository<UiActionEntity>,
   ) {}
   async create(dto: CreateUiRegistryDto) { return this.uiRepo.save(this.uiRepo.create(dto)); }
-  async findAllByProject(projectId: string) { return this.uiRepo.find({ where: { projectId }, order: { createdAt: 'DESC' } }); }
+  async findAllByProject(projectId: string) { return this.uiRepo.find({ where: { projectId }, order: { createdAt: 'DESC' }, take: 500 }); }
   async findById(id: string) { const e = await this.uiRepo.findOne({ where: { id } }); if (!e) throw new NotFoundException('UI registry entry not found'); return e; }
   async update(id: string, dto: UpdateUiRegistryDto) { const e = await this.findById(id); Object.assign(e, dto); return this.uiRepo.save(e); }
   async createAction(uiRegistryId: string, dto: CreateUiActionDto) { await this.findById(uiRegistryId); return this.actionRepo.save(this.actionRepo.create({ ...dto, uiRegistryId })); }
-  async listActions(uiRegistryId: string) { return this.actionRepo.find({ where: { uiRegistryId }, order: { actionName: 'ASC' } }); }
+  async listActions(uiRegistryId: string) { return this.actionRepo.find({ where: { uiRegistryId }, order: { actionName: 'ASC' }, take: 500 }); }
 }

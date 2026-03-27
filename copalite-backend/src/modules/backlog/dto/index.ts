@@ -1,14 +1,14 @@
-import { IsBoolean, IsEnum, IsInt, IsOptional, IsString, IsUUID, Length, Min } from 'class-validator';
+import { IsBoolean, IsEnum, IsInt, IsOptional, IsString, IsUUID, Length, MaxLength, Min } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { BacklogType, BacklogPriority, BacklogStatus } from '../../../common/enums';
 
 export class CreateBacklogItemDto {
   @ApiProperty() @IsUUID() projectId: string;
   @ApiPropertyOptional() @IsOptional() @IsUUID() runId?: string;
-  @ApiProperty() @IsString() sourceType: string;
+  @ApiProperty() @IsString() @MaxLength(100) sourceType: string;
   @ApiPropertyOptional() @IsOptional() @IsString() sourceRef?: string;
   @ApiProperty() @IsString() @Length(3, 220) title: string;
-  @ApiProperty() @IsString() description: string;
+  @ApiProperty() @IsString() @MaxLength(2000) description: string;
   @ApiProperty({ enum: BacklogType }) @IsEnum(BacklogType) backlogType: BacklogType;
   @ApiPropertyOptional({ enum: BacklogPriority }) @IsOptional() @IsEnum(BacklogPriority) priority?: BacklogPriority;
   @ApiPropertyOptional() @IsOptional() @IsUUID() assignedAgentId?: string;

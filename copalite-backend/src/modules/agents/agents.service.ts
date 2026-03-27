@@ -19,7 +19,7 @@ export class AgentsService {
   }
 
   async findAll(): Promise<AgentEntity[]> {
-    return this.agentRepo.find({ order: { executionOrder: 'ASC' } });
+    return this.agentRepo.find({ order: { executionOrder: 'ASC' }, take: 500 });
   }
 
   async findById(id: string): Promise<AgentEntity> {

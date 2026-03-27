@@ -24,7 +24,7 @@ export class PromptsService {
   }
 
   async findAllByAgent(agentId: string): Promise<PromptEntity[]> {
-    return this.promptRepo.find({ where: { agentId }, order: { name: 'ASC', version: 'DESC' } });
+    return this.promptRepo.find({ where: { agentId }, order: { name: 'ASC', version: 'DESC' }, take: 500 });
   }
 
   async findById(id: string): Promise<PromptEntity> {

@@ -25,7 +25,7 @@ export class DocumentsService {
   }
 
   async findAllByProject(projectId: string): Promise<DocumentEntity[]> {
-    return this.docRepo.find({ where: { projectId }, order: { createdAt: 'DESC' } });
+    return this.docRepo.find({ where: { projectId }, order: { createdAt: 'DESC' }, take: 500 });
   }
 
   async findById(id: string): Promise<DocumentEntity> {
@@ -63,6 +63,7 @@ export class DocumentsService {
     return this.versionRepo.find({
       where: { documentId },
       order: { versionNumber: 'DESC' },
+      take: 500,
     });
   }
 }

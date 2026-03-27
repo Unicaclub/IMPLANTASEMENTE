@@ -1,12 +1,12 @@
-import { IsOptional, IsString, IsUUID, Length } from 'class-validator';
+import { IsOptional, IsString, IsUUID, Length, MaxLength } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateDecisionDto {
   @ApiProperty() @IsUUID() projectId: string;
   @ApiProperty() @IsString() @Length(3, 220) title: string;
-  @ApiProperty() @IsString() decisionStatus: string;
-  @ApiProperty() @IsString() context: string;
-  @ApiProperty() @IsString() decisionText: string;
+  @ApiProperty() @IsString() @MaxLength(100) decisionStatus: string;
+  @ApiProperty() @IsString() @MaxLength(50000) context: string;
+  @ApiProperty() @IsString() @MaxLength(50000) decisionText: string;
   @ApiPropertyOptional() @IsOptional() @IsString() consequences?: string;
 }
 

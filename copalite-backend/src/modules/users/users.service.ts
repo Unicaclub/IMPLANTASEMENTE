@@ -30,7 +30,7 @@ export class UsersService {
   }
 
   async findAll(): Promise<UserEntity[]> {
-    return this.userRepo.find({ order: { createdAt: 'DESC' } });
+    return this.userRepo.find({ order: { createdAt: 'DESC' }, take: 500 });
   }
 
   async findById(id: string): Promise<UserEntity> {

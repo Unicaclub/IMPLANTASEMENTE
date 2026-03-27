@@ -28,7 +28,7 @@ export class AuditsService {
   async create(dto: CreateAuditDto) { return this.repo.save(this.repo.create(dto)); }
 
   async findAllByProject(projectId: string) {
-    return this.repo.find({ where: { projectId }, order: { createdAt: 'DESC' } });
+    return this.repo.find({ where: { projectId }, order: { createdAt: 'DESC' }, take: 500 });
   }
 
   async findById(id: string) {

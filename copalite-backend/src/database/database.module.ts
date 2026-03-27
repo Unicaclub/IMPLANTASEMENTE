@@ -22,6 +22,11 @@ import { ActivityHistorySubscriber } from '../common/subscribers/activity-histor
           : false,
         autoLoadEntities: true,
         subscribers: [ActivityHistorySubscriber],
+        extra: {
+          max: configService.get<number>('DB_POOL_SIZE', 20),
+          idleTimeoutMillis: 30_000,
+          connectionTimeoutMillis: 5_000,
+        },
       }),
     }),
   ],

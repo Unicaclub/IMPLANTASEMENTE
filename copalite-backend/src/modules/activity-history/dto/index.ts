@@ -1,4 +1,4 @@
-import { IsOptional, IsString, IsUUID, Length } from 'class-validator';
+import { IsOptional, IsString, IsUUID, Length, MaxLength } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 export class CreateActivityDto {
   @ApiProperty() @IsUUID() workspaceId: string;
@@ -8,5 +8,5 @@ export class CreateActivityDto {
   @ApiProperty() @IsString() @Length(1, 80) actionType: string;
   @ApiProperty() @IsString() @Length(1, 80) entityType: string;
   @ApiProperty() @IsUUID() entityId: string;
-  @ApiProperty() @IsString() description: string;
+  @ApiProperty() @IsString() @MaxLength(2000) description: string;
 }

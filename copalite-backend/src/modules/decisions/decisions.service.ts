@@ -17,7 +17,7 @@ export class DecisionsService {
   }
 
   async findAllByProject(projectId: string): Promise<DecisionEntity[]> {
-    return this.decisionRepo.find({ where: { projectId }, order: { createdAt: 'DESC' } });
+    return this.decisionRepo.find({ where: { projectId }, order: { createdAt: 'DESC' }, take: 500 });
   }
 
   async findById(id: string): Promise<DecisionEntity> {

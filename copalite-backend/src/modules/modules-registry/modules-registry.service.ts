@@ -18,7 +18,7 @@ export class ModulesRegistryService {
   }
 
   async findAllByProject(projectId: string): Promise<ModuleRegistryEntity[]> {
-    return this.repo.find({ where: { projectId }, order: { name: 'ASC' } });
+    return this.repo.find({ where: { projectId }, order: { name: 'ASC' }, take: 500 });
   }
 
   async findById(id: string): Promise<ModuleRegistryEntity> {

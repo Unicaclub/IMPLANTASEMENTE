@@ -39,6 +39,7 @@ export class ReportsService {
       where: { projectId },
       order: { createdAt: 'DESC' },
       select: ['id', 'projectId', 'runId', 'reportType', 'title', 'summary', 'status', 'createdAt', 'updatedAt'],
+      take: 500,
     });
   }
 

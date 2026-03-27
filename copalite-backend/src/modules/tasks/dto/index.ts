@@ -1,4 +1,4 @@
-import { IsEnum, IsIn, IsOptional, IsString, IsUUID, Length } from 'class-validator';
+import { IsEnum, IsIn, IsOptional, IsString, IsUUID, Length, MaxLength } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { TASK_TYPES, TaskStatus } from '../../../common/enums';
 
@@ -6,7 +6,7 @@ export class CreateTaskDto {
   @ApiProperty() @IsUUID() projectId: string;
   @ApiPropertyOptional() @IsOptional() @IsUUID() backlogItemId?: string;
   @ApiProperty() @IsString() @Length(3, 220) title: string;
-  @ApiProperty() @IsString() description: string;
+  @ApiProperty() @IsString() @MaxLength(2000) description: string;
   @ApiProperty({ enum: TASK_TYPES }) @IsIn(TASK_TYPES) taskType: string;
   @ApiPropertyOptional() @IsOptional() @IsUUID() assignedUserId?: string;
   @ApiPropertyOptional() @IsOptional() @IsUUID() assignedAgentId?: string;
