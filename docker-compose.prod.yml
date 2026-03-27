@@ -112,7 +112,7 @@ services:
     environment:
       DOMAIN: ${DOMAIN}
     volumes:
-      - ./nginx/nginx.prod.conf:/etc/nginx/nginx.prod.conf.template:ro
+      - ${NGINX_CONF:-./nginx/nginx.prod.conf}:/etc/nginx/nginx.prod.conf.template:ro
       - ./nginx/ssl-params.conf:/etc/nginx/snippets/ssl-params.conf:ro
       - certbot_webroot:/var/www/certbot:ro
       - certbot_certs:/etc/letsencrypt:ro
