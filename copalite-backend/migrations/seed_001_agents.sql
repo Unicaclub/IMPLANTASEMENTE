@@ -2,13 +2,15 @@
 -- COPALITE v1 - Seed: Official Agents
 -- ============================================
 
+-- Uses the current enum values (after migration 011 renames)
 INSERT INTO agents (name, slug, agent_type, description, execution_order, status) VALUES
   ('Orchestrator Agent', 'orchestrator', 'orchestrator', 'Coordinates execution flow between agents, manages run lifecycle and step sequencing.', 1, 'active'),
   ('Architect Agent', 'architect', 'architect', 'Analyzes system architecture, identifies modules, layers and dependencies.', 2, 'active'),
-  ('Database Builder Agent', 'database-builder', 'database_builder', 'Maps database schemas, entities, relationships and data models.', 3, 'active'),
-  ('Backend Builder Agent', 'backend-builder', 'backend_builder', 'Discovers API endpoints, services, business rules and backend patterns.', 4, 'active'),
-  ('Frontend Builder Agent', 'frontend-builder', 'frontend_builder', 'Maps UI components, screens, routes and user interactions.', 5, 'active'),
-  ('Validator Agent', 'validator', 'validator', 'Cross-references discoveries against sources, validates confidence levels.', 6, 'active'),
-  ('Documentation Writer Agent', 'doc-writer', 'doc_writer', 'Generates structured documentation from discoveries and evidence.', 7, 'active'),
-  ('DevOps Agent', 'devops-agent', 'devops_agent', 'Maps infrastructure, deployment configs, CI/CD pipelines and environments.', 8, 'active'),
-  ('QA Test Agent', 'qa-test-agent', 'qa_test_agent', 'Identifies test coverage, test patterns and quality gaps.', 9, 'active');
+  ('Schema Mapper Agent', 'schema-mapper', 'schema_mapper', 'Analisa banco de dados: tabelas, campos, relacoes, tipos e gera schema registry.', 3, 'active'),
+  ('API Analyzer Agent', 'api-analyzer', 'api_analyzer', 'Mapeia todos os endpoints: rotas, metodos, payloads, responses e gera api/route registry.', 4, 'active'),
+  ('UI Inspector Agent', 'ui-inspector', 'ui_inspector', 'Mapeia telas, componentes, formularios, estados e gera ui registry.', 5, 'active'),
+  ('Code Auditor Agent', 'code-auditor', 'code_auditor', 'Analisa qualidade: complexidade, duplicacao, debt, vulnerabilidades.', 6, 'active'),
+  ('Evidence Collector Agent', 'evidence-collector', 'evidence_collector', 'Coleta evidencias tecnicas: configs, padroes, snippets relevantes.', 7, 'active'),
+  ('Comparison Agent', 'comparator', 'comparator', 'Compara duas versoes de registries e identifica diferencas.', 8, 'active'),
+  ('Report Generator Agent', 'report-generator', 'report_generator', 'Gera relatorios executivos com base nas descobertas dos outros agentes.', 9, 'active')
+ON CONFLICT (slug) DO NOTHING;

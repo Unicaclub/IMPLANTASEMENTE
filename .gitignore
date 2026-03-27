@@ -18,3 +18,9 @@ files.zip
 arquivo.txt
 backups/
 nginx/nginx.active.conf
+cookies.txt
+*.dump
+
+# Legacy/duplicate directories (not part of active project)
+backend/
+IMPLANTASEMENTE/

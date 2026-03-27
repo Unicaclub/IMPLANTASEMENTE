@@ -19,8 +19,8 @@ import { LlmProviderFactory } from '../llm/llm-provider.factory';
 import { SourceIngestionService } from '../llm/source-ingestion.service';
 
 // Post-pipeline services
-import { BacklogService } from '../backlog/backlog.service';
 import { AuditsService } from '../audits/audits.service';
+import { BacklogService } from '../backlog/backlog.service';
 import { ReportsService } from '../reports/reports.service';
 
 // Enums
@@ -257,17 +257,22 @@ export class OrchestrationService {
         await queryRunner.manager.save(currentAgentRun);
       }
 
-      // Save agent output if provided
+      // Save agent output if provided — but skip if the agent execution already created one
       if (dto.structuredData || dto.outputSummary) {
-        const output = queryRunner.manager.create(AgentOutputEntity, {
-          agentRunId: currentAgentRun.id,
-          outputType: OutputType.SUMMARY,
-          title: `Output: ${currentStep.stepName}`,
-          contentMarkdown: dto.outputSummary || '',
-          structuredDataJson: dto.structuredData || null,
-          validationStatus: ValidationStatus.PENDING,
+        const existingOutput = await queryRunner.manager.findOne(AgentOutputEntity, {
+          where: { agentRunId: currentAgentRun.id },
         });
-        await queryRunner.manager.save(output);
+        if (!existingOutput) {
+          const output = queryRunner.manager.create(AgentOutputEntity, {
+            agentRunId: currentAgentRun.id,
+            outputType: OutputType.SUMMARY,
+            title: `Output: ${currentStep.stepName}`,
+            contentMarkdown: dto.outputSummary || '',
+            structuredDataJson: dto.structuredData || null,
+            validationStatus: ValidationStatus.PENDING,
+          });
+          await queryRunner.manager.save(output);
+        }
       }
 
       // Complete the current step
@@ -441,20 +446,21 @@ export class OrchestrationService {
       order: { stepOrder: 'ASC' },
     });
 
-    // Attach agent runs to each step
-    const stepsWithAgentRuns = await Promise.all(
-      steps.map(async (step) => {
-        const agentRuns = await this.agentRunRepo.find({
-          where: { runId },
-          relations: ['agent'],
-          order: { createdAt: 'ASC' },
-        });
-        return {
-          ...step,
-          agentRuns: agentRuns.filter((ar) => ar.createdAt >= (step.startedAt || new Date(0))),
-        };
-      }),
-    );
+    // Fetch all agent runs once, then distribute to steps by time window
+    const allAgentRuns = await this.agentRunRepo.find({
+      where: { runId },
+      relations: ['agent'],
+      order: { createdAt: 'ASC' },
+    });
+
+    const stepsWithAgentRuns = steps.map((step) => {
+      return {
+        ...step,
+        agentRuns: allAgentRuns.filter(
+          (ar) => ar.createdAt >= (step.startedAt || new Date(0)),
+        ),
+      };
+    });
 
     const completed = steps.filter(
       (s) => s.status === RunStatus.COMPLETED || s.status === RunStatus.FAILED,
